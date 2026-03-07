@@ -4,7 +4,9 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import com.google.firebase.auth.FirebaseAuth
 import com.takehome.twinmind.core.designsystem.theme.TwinMindTheme
+import com.takehome.twinmind.navigation.TwinMindNavHost
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -14,7 +16,9 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             TwinMindTheme {
-                // Navigation will be wired here in Phase 3
+                TwinMindNavHost(
+                    isLoggedIn = FirebaseAuth.getInstance().currentUser != null,
+                )
             }
         }
     }
