@@ -1,15 +1,33 @@
 *.iml
 .gradle
 /local.properties
+local.properties
+
+# IDE
 /.idea/caches
 /.idea/libraries
 /.idea/modules.xml
 /.idea/workspace.xml
 /.idea/navEditor.xml
 /.idea/assetWizardSettings.xml
+
+# macOS
 .DS_Store
-/build
-/captures
+
+# Build outputs (root + all modules)
+build/
+**/build/
+
+# Native
 .externalNativeBuild
 .cxx
-local.properties
+
+# Captures
+/captures
+
+# Secrets
+*.jks
+*.keystore
+
+# Room schema exports (optional — uncomment to track schemas)
+# **/schemas/

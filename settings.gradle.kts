@@ -19,6 +19,19 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Twin Mind TakeHome"
+rootProject.name = "TwinMind"
+
 include(":app")
- 
+
+include(":core:model")
+include(":core:common")
+include(":core:designsystem")
+include(":core:database")
+include(":core:data")
+include(":core:audio")
+include(":core:notifications")
+
+include(":feature:auth")
+include(":feature:dashboard")
+include(":feature:recording")
+include(":feature:summary")
