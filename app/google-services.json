@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "945429471595",
+    "project_id": "twinmind-64343",
+    "storage_bucket": "twinmind-64343.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:945429471595:android:fc46fc809b718d4a4fec2e",
+        "android_client_info": {
+          "package_name": "com.takehome.twinmind"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "945429471595-pn802bh1c9qe1fisvb4lvfpap54l1pmj.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.takehome.twinmind",
+            "certificate_hash": "8de4c73ef386dd76a09266d968b0427f3426674e"
+          }
+        },
+        {
+          "client_id": "945429471595-7nkjnbv8sj5a8f5f4e2t7ltesiovdjop.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC9wC6Y7kqa_BQx070JFgaZ1hPvwZTTLOY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "945429471595-7nkjnbv8sj5a8f5f4e2t7ltesiovdjop.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
