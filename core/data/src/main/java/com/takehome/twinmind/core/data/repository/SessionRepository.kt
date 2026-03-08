@@ -52,6 +52,10 @@ class SessionRepository @Inject constructor(
         audioChunkDao.getBySessionAndStatus(sessionId, ChunkStatus.PENDING.name)
             .map { it.toDomain() }
 
+    fun observeChunksBySession(sessionId: String): Flow<List<AudioChunk>> =
+        audioChunkDao.observeBySession(sessionId)
+            .map { list -> list.map { it.toDomain() } }
+
     suspend fun updateChunkStatus(chunkId: String, status: ChunkStatus) {
         audioChunkDao.updateStatus(chunkId, status.name)
     }

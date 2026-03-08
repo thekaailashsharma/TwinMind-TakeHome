@@ -12,8 +12,12 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONObject
 import timber.log.Timber
 import javax.inject.Inject
@@ -46,14 +50,14 @@ class SummaryViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
 
-            val transcript = transcriptRepository.getFullTranscript(sessionId)
-            _uiState.update { it.copy(transcriptText = transcript, userNotes = userNotes) }
-
             val existing = summaryRepository.getBySession(sessionId)
             if (existing != null && existing.status == SummaryStatus.COMPLETED) {
+                val transcript = transcriptRepository.getFullTranscript(sessionId)
                 _uiState.update {
                     it.copy(
                         isLoading = false,
+                        transcriptText = transcript,
+                        userNotes = userNotes,
                         summaryTitle = existing.title.orEmpty(),
                         summaryText = existing.summaryText.orEmpty(),
                         keyPoints = existing.keyPoints
@@ -69,6 +73,14 @@ class SummaryViewModel @Inject constructor(
                 return@launch
             }
 
+            val transcript = withTimeoutOrNull(30_000) {
+                transcriptRepository.observeBySession(sessionId)
+                    .map { segments -> segments.joinToString(" ") { it.text } }
+                    .filter { it.isNotBlank() }
+                    .first()
+            } ?: transcriptRepository.getFullTranscript(sessionId)
+
+            _uiState.update { it.copy(transcriptText = transcript, userNotes = userNotes) }
             generateSummary(sessionId, transcript, userNotes)
         }
     }
@@ -77,7 +89,16 @@ class SummaryViewModel @Inject constructor(
         viewModelScope.launch {
             val transcript = _uiState.value.transcriptText
             val notes = _uiState.value.userNotes
-            _uiState.update { it.copy(isLoading = true, error = null, streamedText = "") }
+            _uiState.update {
+                it.copy(
+                    isLoading = true,
+                    error = null,
+                    streamedText = "",
+                    summaryText = "",
+                    actionItems = emptyList(),
+                    keyPoints = emptyList(),
+                )
+            }
             generateSummary(sessionId, transcript, notes)
         }
     }

@@ -8,6 +8,7 @@ import com.takehome.twinmind.core.common.DispatcherProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -17,7 +18,6 @@ import timber.log.Timber
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlin.math.abs
 import kotlin.math.sqrt
 
 @Singleton
@@ -27,6 +27,7 @@ class AudioRecorder @Inject constructor(
     private var audioRecord: AudioRecord? = null
     private var recordingJob: Job? = null
     private var currentWriter: WavWriter? = null
+    @Volatile private var isPaused = false
 
     private val _amplitudes = MutableSharedFlow<Float>(extraBufferCapacity = 64)
     val amplitudes: SharedFlow<Float> = _amplitudes.asSharedFlow()
@@ -34,11 +35,20 @@ class AudioRecorder @Inject constructor(
     private val _chunkReady = MutableSharedFlow<ChunkResult>(extraBufferCapacity = 8)
     val chunkReady: SharedFlow<ChunkResult> = _chunkReady.asSharedFlow()
 
+    private val _silenceDetected = MutableSharedFlow<Boolean>(extraBufferCapacity = 8)
+    val silenceDetected: SharedFlow<Boolean> = _silenceDetected.asSharedFlow()
+
     val isRecording: Boolean get() = recordingJob?.isActive == true
+
+    private val overlapQueue = ArrayDeque<ByteArray>()
+    private var lastSignificantAudioMs = 0L
 
     @SuppressLint("MissingPermission")
     fun start(outputDir: File, sessionId: String, scope: CoroutineScope) {
         if (isRecording) return
+        isPaused = false
+        lastSignificantAudioMs = System.currentTimeMillis()
+        overlapQueue.clear()
 
         val bufferSize = AudioRecord.getMinBufferSize(
             WavWriter.SAMPLE_RATE,
@@ -62,10 +72,24 @@ class AudioRecorder @Inject constructor(
 
             try {
                 while (isActive) {
+                    if (isPaused) {
+                        delay(100)
+                        continue
+                    }
                     val read = audioRecord?.read(buffer, 0, buffer.size) ?: -1
                     if (read > 0) {
                         currentWriter?.write(buffer, 0, read)
-                        _amplitudes.tryEmit(computeAmplitude(buffer, read))
+                        val amplitude = computeAmplitude(buffer, read)
+                        _amplitudes.tryEmit(amplitude)
+
+                        trackOverlap(buffer, read)
+
+                        if (amplitude > SILENCE_THRESHOLD) {
+                            lastSignificantAudioMs = System.currentTimeMillis()
+                            _silenceDetected.tryEmit(false)
+                        } else if (System.currentTimeMillis() - lastSignificantAudioMs > SILENCE_TIMEOUT_MS) {
+                            _silenceDetected.tryEmit(true)
+                        }
 
                         if ((currentWriter?.durationMs ?: 0) >= CHUNK_DURATION_MS) {
                             val duration = currentWriter?.durationMs ?: 0L
@@ -84,6 +108,7 @@ class AudioRecorder @Inject constructor(
                             chunkIndex++
                             chunkFile = newChunkFile(outputDir, sessionId, chunkIndex)
                             currentWriter = WavWriter(chunkFile)
+                            writeOverlapToChunk()
                         }
                     }
                 }
@@ -106,13 +131,51 @@ class AudioRecorder @Inject constructor(
         Timber.d("AudioRecorder started for session $sessionId")
     }
 
+    fun pause() {
+        isPaused = true
+        try {
+            audioRecord?.stop()
+        } catch (e: Exception) {
+            Timber.w(e, "Error pausing AudioRecord")
+        }
+    }
+
+    fun resume() {
+        try {
+            audioRecord?.startRecording()
+        } catch (e: Exception) {
+            Timber.w(e, "Error resuming AudioRecord")
+        }
+        lastSignificantAudioMs = System.currentTimeMillis()
+        isPaused = false
+    }
+
     suspend fun stop() {
+        isPaused = false
         recordingJob?.cancelAndJoin()
         recordingJob = null
-        audioRecord?.stop()
-        audioRecord?.release()
+        try {
+            audioRecord?.stop()
+            audioRecord?.release()
+        } catch (e: Exception) {
+            Timber.w(e, "Error stopping AudioRecord")
+        }
         audioRecord = null
+        overlapQueue.clear()
         Timber.d("AudioRecorder stopped")
+    }
+
+    private fun trackOverlap(buffer: ByteArray, readSize: Int) {
+        overlapQueue.addLast(buffer.copyOf(readSize))
+        while (overlapQueue.size > MAX_OVERLAP_BUFFERS) {
+            overlapQueue.removeFirst()
+        }
+    }
+
+    private fun writeOverlapToChunk() {
+        for (buf in overlapQueue) {
+            currentWriter?.write(buf, 0, buf.size)
+        }
     }
 
     private fun computeAmplitude(buffer: ByteArray, readSize: Int): Float {
@@ -143,5 +206,11 @@ class AudioRecorder @Inject constructor(
     companion object {
         private const val BUFFER_SIZE = 4096
         const val CHUNK_DURATION_MS = 30_000L
+        private const val OVERLAP_MS = 2_000L
+        private val OVERLAP_BYTES =
+            (WavWriter.SAMPLE_RATE * WavWriter.CHANNELS * (WavWriter.BITS_PER_SAMPLE / 8) * OVERLAP_MS / 1000).toInt()
+        private val MAX_OVERLAP_BUFFERS = OVERLAP_BYTES / BUFFER_SIZE + 1
+        private const val SILENCE_THRESHOLD = 0.01f
+        private const val SILENCE_TIMEOUT_MS = 10_000L
     }
 }

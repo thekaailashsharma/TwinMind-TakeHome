@@ -1,7 +1,13 @@
 package com.takehome.twinmind.feature.recording
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -46,6 +53,7 @@ fun RecordingScreen(
     elapsedTime: String,
     dateTimeLocation: String,
     transcriptText: String,
+    statusText: String,
     onBackClick: () -> Unit,
     onChatClick: () -> Unit,
     onStopClick: () -> Unit,
@@ -53,6 +61,9 @@ fun RecordingScreen(
     onTranscriptCardClick: () -> Unit,
     modifier: Modifier = Modifier,
     isRecording: Boolean = true,
+    isPaused: Boolean = false,
+    isStopping: Boolean = false,
+    silenceWarning: Boolean = false,
 ) {
     var userNotes by rememberSaveable { mutableStateOf("") }
 
@@ -62,12 +73,40 @@ fun RecordingScreen(
             TmBackTopBar(onBackClick = onBackClick)
         },
         bottomBar = {
-            TmRecordingBar(
-                elapsedTime = elapsedTime,
-                onChatClick = onChatClick,
-                onStopClick = onStopClick,
-                isRecording = isRecording,
-            )
+            if (isStopping) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp,
+                            color = TwinMindTeal,
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Processing transcription...",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = TwinMindDarkNavy,
+                        )
+                    }
+                }
+            } else {
+                TmRecordingBar(
+                    elapsedTime = elapsedTime,
+                    onChatClick = onChatClick,
+                    onStopClick = onStopClick,
+                    isRecording = isRecording && !isPaused,
+                )
+            }
         },
         containerColor = Color(0xFFF8F8F8),
     ) { innerPadding ->
@@ -80,12 +119,15 @@ fun RecordingScreen(
         ) {
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Title
             Text(
-                text = "I'm listening and taking notes...",
+                text = statusText,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                color = TwinMindTeal,
+                color = when {
+                    isPaused -> Color(0xFFE67E22)
+                    isStopping -> TwinMindGray
+                    else -> TwinMindTeal
+                },
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
@@ -93,6 +135,40 @@ fun RecordingScreen(
                 fontSize = 13.sp,
                 color = TwinMindGray,
             )
+
+            AnimatedVisibility(
+                visible = silenceWarning,
+                enter = fadeIn(),
+                exit = fadeOut(),
+            ) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xFFFFF3E0),
+                    ),
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            imageVector = TmIcons.Warning,
+                            contentDescription = null,
+                            tint = Color(0xFFE67E22),
+                            modifier = Modifier.size(20.dp),
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "No audio detected for 10+ seconds. Is your microphone working?",
+                            fontSize = 13.sp,
+                            color = Color(0xFF5D4037),
+                        )
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(20.dp))
 
@@ -187,8 +263,10 @@ fun RecordingScreen(
                             color = TwinMindDarkNavy,
                             modifier = Modifier.weight(1f),
                         )
-                        TmRecordingIndicator(elapsedTime = elapsedTime)
-                        Spacer(modifier = Modifier.width(8.dp))
+                        if (isRecording && !isPaused && !isStopping) {
+                            TmRecordingIndicator(elapsedTime = elapsedTime)
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
                         Icon(
                             imageVector = TmIcons.ChevronRight,
                             contentDescription = "Expand",
@@ -199,7 +277,11 @@ fun RecordingScreen(
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
                         text = transcriptText.ifEmpty {
-                            "The transcript will update every 60s, it will appear here automatically as you speak"
+                            if (isStopping) {
+                                "Waiting for transcription..."
+                            } else {
+                                "The transcript will update every 30s, it will appear here automatically as you speak"
+                            }
                         },
                         fontSize = 14.sp,
                         color = if (transcriptText.isEmpty()) TwinMindTeal else TwinMindDarkNavy,

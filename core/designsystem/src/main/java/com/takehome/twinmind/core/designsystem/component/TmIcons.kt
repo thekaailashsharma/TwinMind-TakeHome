@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Mail
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Mic
@@ -66,4 +67,5 @@ object TmIcons {
     val Logout: ImageVector = Icons.Default.Logout
     val ChevronRight: ImageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight
     val DigestIcon: ImageVector = Icons.Default.Language
+    val Warning: ImageVector = Icons.Default.Warning
 }

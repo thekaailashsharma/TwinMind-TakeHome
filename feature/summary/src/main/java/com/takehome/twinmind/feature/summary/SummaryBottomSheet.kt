@@ -1,5 +1,6 @@
 package com.takehome.twinmind.feature.summary
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -8,10 +9,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -53,6 +56,7 @@ fun SummaryBottomSheet(
     onEditClick: () -> Unit,
     onShareWithAttendeesClick: () -> Unit,
     modifier: Modifier = Modifier,
+    isLoading: Boolean = false,
     sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
 ) {
     var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
@@ -90,6 +94,7 @@ fun SummaryBottomSheet(
                     0 -> SummaryTabContent(
                         summaryText = summaryText,
                         actionItems = actionItems,
+                        isLoading = isLoading,
                         onShareWithAttendeesClick = onShareWithAttendeesClick,
                     )
                     1 -> NotesTabContent(notesText = notesText)
@@ -134,9 +139,9 @@ fun SummaryBottomSheet(
 private fun SummaryTabContent(
     summaryText: String,
     actionItems: List<ActionItem>,
+    isLoading: Boolean,
     onShareWithAttendeesClick: () -> Unit,
 ) {
-    // Share banner
     TmShareBanner(
         text = "Share summary with attendees",
         onShareClick = onShareWithAttendeesClick,
@@ -145,13 +150,34 @@ private fun SummaryTabContent(
 
     Spacer(modifier = Modifier.height(16.dp))
 
-    // Summary text
-    Text(
-        text = summaryText.ifEmpty { "Summary will appear here..." },
-        fontSize = 15.sp,
-        color = TwinMindDarkNavy,
-        lineHeight = 22.sp,
-    )
+    if (isLoading && summaryText.isBlank()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 24.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(20.dp),
+                strokeWidth = 2.dp,
+                color = TwinMindTeal,
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = "Generating summary...",
+                fontSize = 15.sp,
+                color = TwinMindGray,
+            )
+        }
+    } else {
+        Text(
+            text = summaryText.ifEmpty { "Summary will appear here..." },
+            fontSize = 15.sp,
+            color = TwinMindDarkNavy,
+            lineHeight = 22.sp,
+        )
+    }
 
     Spacer(modifier = Modifier.height(16.dp))
     HorizontalDivider(color = TwinMindGray.copy(alpha = 0.3f))

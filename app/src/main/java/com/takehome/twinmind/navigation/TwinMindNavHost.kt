@@ -190,6 +190,14 @@ fun TwinMindNavHost(
                     }
                 }
 
+                LaunchedEffect(uiState.isReadyForSummary) {
+                    if (uiState.isReadyForSummary) {
+                        currentSessionId = uiState.sessionId
+                        showSummarySheet = true
+                        recordingViewModel.clearReadyForSummary()
+                    }
+                }
+
                 val now = SimpleDateFormat("MMM dd • h:mm a", Locale.getDefault())
                     .format(Date())
 
@@ -197,19 +205,25 @@ fun TwinMindNavHost(
                     elapsedTime = recordingViewModel.formatElapsedTime(uiState.elapsedMs),
                     dateTimeLocation = now,
                     transcriptText = uiState.transcriptText,
+                    statusText = uiState.statusText,
                     onBackClick = {
-                        recordingViewModel.stopRecording()
-                        backStack.removeLastOrNull()
+                        if (!uiState.isStopping) {
+                            recordingViewModel.stopRecording()
+                            backStack.removeLastOrNull()
+                        }
                     },
                     onChatClick = {},
                     onStopClick = {
-                        recordingViewModel.stopRecording()
-                        currentSessionId = uiState.sessionId
-                        showSummarySheet = true
+                        if (!uiState.isStopping) {
+                            recordingViewModel.stopRecording()
+                        }
                     },
                     onNotesCardClick = {},
                     onTranscriptCardClick = {},
                     isRecording = uiState.isRecording,
+                    isPaused = uiState.isPaused,
+                    isStopping = uiState.isStopping,
+                    silenceWarning = uiState.silenceWarning,
                 )
             }
 
@@ -241,6 +255,7 @@ fun TwinMindNavHost(
             transcriptText = summaryState.transcriptText,
             transcriptTime = "00:00",
             actionItems = summaryState.actionItems.map { ActionItem(it) },
+            isLoading = summaryState.isLoading || summaryState.isStreaming,
             onDismiss = {
                 showSummarySheet = false
                 currentSessionId = null

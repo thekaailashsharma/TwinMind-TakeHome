@@ -11,27 +11,39 @@ import com.takehome.twinmind.core.data.ai.TranscriptionWorker
 import com.takehome.twinmind.core.data.repository.SessionRepository
 import com.takehome.twinmind.core.data.repository.TranscriptRepository
 import com.takehome.twinmind.core.model.AudioChunk
+import com.takehome.twinmind.core.model.ChunkStatus
 import com.takehome.twinmind.core.model.Session
 import com.takehome.twinmind.core.model.SessionStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
 data class RecordingUiState(
     val sessionId: String? = null,
     val isRecording: Boolean = false,
+    val isPaused: Boolean = false,
+    val pauseReason: String? = null,
     val elapsedMs: Long = 0L,
     val amplitude: Float = 0f,
     val transcriptText: String = "",
     val userNotes: String = "",
     val isStopping: Boolean = false,
+    val isReadyForSummary: Boolean = false,
+    val silenceWarning: Boolean = false,
+    val statusText: String = "Recording...",
 )
 
 @HiltViewModel
@@ -45,26 +57,44 @@ class RecordingViewModel @Inject constructor(
 
     private val _sessionId = MutableStateFlow<String?>(null)
     private val _userNotes = MutableStateFlow("")
-    private val _isStopping = MutableStateFlow(false)
+    private val _stopState = MutableStateFlow(StopState())
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val _transcriptText: StateFlow<String> = _sessionId
+        .flatMapLatest { id ->
+            if (id != null) {
+                transcriptRepository.observeBySession(id)
+                    .map { segments -> segments.joinToString(" ") { it.text } }
+            } else {
+                flowOf("")
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "")
 
     val uiState: StateFlow<RecordingUiState> = combine(
         stateHolder.state,
-        _sessionId,
+        _transcriptText,
         _userNotes,
-        _isStopping,
-    ) { recState, sessionId, notes, stopping ->
-        val transcriptText = sessionId?.let {
-            transcriptRepository.getFullTranscript(it)
-        }.orEmpty()
-
+        _stopState,
+    ) { recState, transcriptText, notes, stopState ->
         RecordingUiState(
-            sessionId = sessionId,
+            sessionId = recState.sessionId ?: _sessionId.value,
             isRecording = recState.isRecording,
+            isPaused = recState.isPaused,
+            pauseReason = recState.pauseReason,
             elapsedMs = recState.elapsedMs,
             amplitude = recState.currentAmplitude,
             transcriptText = transcriptText,
             userNotes = notes,
-            isStopping = stopping,
+            isStopping = stopState.isStopping,
+            isReadyForSummary = stopState.isReadyForSummary,
+            silenceWarning = recState.silenceDetected,
+            statusText = when {
+                stopState.isStopping -> "Processing transcription..."
+                recState.isPaused -> recState.pauseReason ?: "Paused"
+                recState.isRecording -> "I'm listening and taking notes..."
+                else -> "Ready"
+            },
         )
     }.stateIn(
         scope = viewModelScope,
@@ -109,20 +139,43 @@ class RecordingViewModel @Inject constructor(
 
     fun stopRecording() {
         viewModelScope.launch {
-            _isStopping.value = true
+            _stopState.value = StopState(isStopping = true)
             appContext.startService(RecordingService.stopIntent(appContext))
 
-            _sessionId.value?.let { id ->
+            val sessionId = _sessionId.value
+            if (sessionId != null) {
                 sessionRepository.update(
-                    sessionRepository.getById(id)?.copy(
+                    sessionRepository.getById(sessionId)?.copy(
                         status = SessionStatus.COMPLETED,
                         endedAt = System.currentTimeMillis(),
                         notes = _userNotes.value.takeIf { it.isNotBlank() },
-                    ) ?: return@let,
+                    ) ?: return@launch,
                 )
+
+                waitForTranscriptionCompletion(sessionId)
+            } else {
+                _stopState.value = StopState(isStopping = false)
             }
-            _isStopping.value = false
         }
+    }
+
+    private suspend fun waitForTranscriptionCompletion(sessionId: String) {
+        delay(3000)
+
+        withTimeoutOrNull(120_000) {
+            sessionRepository.observeChunksBySession(sessionId)
+                .first { chunks ->
+                    chunks.isNotEmpty() && chunks.all {
+                        it.status == ChunkStatus.COMPLETED || it.status == ChunkStatus.FAILED
+                    }
+                }
+        }
+
+        _stopState.value = StopState(isStopping = false, isReadyForSummary = true)
+    }
+
+    fun clearReadyForSummary() {
+        _stopState.value = StopState()
     }
 
     fun updateNotes(notes: String) {
@@ -135,4 +188,9 @@ class RecordingViewModel @Inject constructor(
         val seconds = totalSeconds % 60
         return "$minutes:${seconds.toString().padStart(2, '0')}"
     }
+
+    private data class StopState(
+        val isStopping: Boolean = false,
+        val isReadyForSummary: Boolean = false,
+    )
 }
