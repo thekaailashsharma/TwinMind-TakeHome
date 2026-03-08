@@ -35,9 +35,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.graphics.drawscope.withTransform
+import com.takehome.twinmind.feature.auth.R
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -208,7 +210,11 @@ fun SignInScreen(
                 elevation = null,
             ) {
                 // Colorful Google G Logo
-                GoogleLogo(modifier = Modifier.size(24.dp))
+                Image(
+                    painter = painterResource(id = R.drawable.google),
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp)
+                )
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
                     text = "Continue with Google",
@@ -224,89 +230,6 @@ fun SignInScreen(
     }
 }
 
-@Composable
-private fun GoogleLogo(modifier: Modifier = Modifier) {
-    Canvas(modifier = modifier) {
-        val centerX = size.width / 2
-        val centerY = size.height / 2
-        val radius = size.width / 2
-        val innerRadius = radius * 0.5f // Adjust for thickness
-
-        // Blue (Right half + bottom right)
-        // Standard Google G construction:
-        // Blue: 0 to -45 deg (approx) and horizontal bar
-        // Green: 45 to 135 deg
-        // Yellow: 135 to 225 deg
-        // Red: 225 to 315 deg (top)
-        
-        // Simplified G shape using arcs
-        val strokeWidth = radius * 0.35f
-        val arcSize = Size(size.width - strokeWidth, size.height - strokeWidth)
-        val arcTopLeft = Offset(strokeWidth / 2, strokeWidth / 2)
-
-        // Red (Top)
-        drawArc(
-            color = Color(0xFFEA4335),
-            startAngle = 195f,
-            sweepAngle = 105f,
-            useCenter = false,
-            topLeft = arcTopLeft,
-            size = arcSize,
-            style = Stroke(width = strokeWidth)
-        )
-
-        // Yellow (Left)
-        drawArc(
-            color = Color(0xFFFBBC05),
-            startAngle = 135f,
-            sweepAngle = 60f,
-            useCenter = false,
-            topLeft = arcTopLeft,
-            size = arcSize,
-            style = Stroke(width = strokeWidth)
-        )
-
-        // Green (Bottom)
-        drawArc(
-            color = Color(0xFF34A853),
-            startAngle = 30f,
-            sweepAngle = 105f,
-            useCenter = false,
-            topLeft = arcTopLeft,
-            size = arcSize,
-            style = Stroke(width = strokeWidth)
-        )
-
-        // Blue (Right + Bar)
-        drawArc(
-            color = Color(0xFF4285F4),
-            startAngle = 300f,
-            sweepAngle = 60f, // Short arc at top right
-            useCenter = false,
-            topLeft = arcTopLeft,
-            size = arcSize,
-            style = Stroke(width = strokeWidth)
-        )
-        
-        // Blue Bar
-        drawRect(
-            color = Color(0xFF4285F4),
-            topLeft = Offset(centerX, centerY - strokeWidth / 2),
-            size = Size(radius, strokeWidth)
-        )
-        
-        // Fix Blue Arc overlap (bottom right)
-        drawArc(
-            color = Color(0xFF4285F4),
-            startAngle = 0f, // Start from right
-            sweepAngle = 45f,
-            useCenter = false,
-            topLeft = arcTopLeft,
-            size = arcSize,
-            style = Stroke(width = strokeWidth)
-        )
-    }
-}
 
 @Composable
 private fun LaurelBadgeSection(
