@@ -48,6 +48,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun DashboardScreen(
     userName: String,
+    userEmail: String,
+    userPhotoUrl: String?,
     onCaptureNotesClick: () -> Unit,
     onViewDigestClick: () -> Unit,
     onChatClick: () -> Unit,
@@ -57,6 +59,7 @@ fun DashboardScreen(
     onPersonalizationClick: () -> Unit,
     onSettingsClick: () -> Unit,
     onUploadAudioClick: () -> Unit,
+    onSignOutClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -69,7 +72,8 @@ fun DashboardScreen(
             ModalDrawerSheet {
                 DrawerContent(
                     userName = userName,
-                    userEmail = "",
+                    userEmail = userEmail,
+                    userPhotoUrl = userPhotoUrl,
                     isPro = false,
                     onPersonalizationClick = {
                         scope.launch { drawerState.close() }
@@ -82,6 +86,10 @@ fun DashboardScreen(
                     onSettingsClick = {
                         scope.launch { drawerState.close() }
                         onSettingsClick()
+                    },
+                    onSignOutClick = {
+                        scope.launch { drawerState.close() }
+                        onSignOutClick()
                     },
                 )
             }

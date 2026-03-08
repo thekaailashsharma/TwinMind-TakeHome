@@ -17,6 +17,7 @@ import javax.inject.Inject
 data class DashboardUiState(
     val userName: String = "User",
     val userEmail: String = "",
+    val userPhotoUrl: String? = null,
     val sessions: List<Session> = emptyList(),
     val isLoading: Boolean = true,
 )
@@ -37,6 +38,7 @@ class DashboardViewModel @Inject constructor(
                 authRepository.displayName ?: "User"
             },
             userEmail = authRepository.email.orEmpty(),
+            userPhotoUrl = authRepository.photoUrl,
             sessions = sessions,
             isLoading = false,
         )

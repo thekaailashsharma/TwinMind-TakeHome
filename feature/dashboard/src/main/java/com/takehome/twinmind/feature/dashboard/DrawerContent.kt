@@ -32,9 +32,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
 import com.takehome.twinmind.core.designsystem.component.TmDrawerMenuItem
 import com.takehome.twinmind.core.designsystem.component.TmIcons
 import com.takehome.twinmind.core.designsystem.component.TmProBadge
@@ -49,10 +51,12 @@ import com.takehome.twinmind.core.designsystem.theme.TwinMindWhite
 fun DrawerContent(
     userName: String,
     userEmail: String,
+    userPhotoUrl: String?,
     isPro: Boolean,
     onPersonalizationClick: () -> Unit,
     onUploadAudioClick: () -> Unit,
     onSettingsClick: () -> Unit,
+    onSignOutClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var searchQuery by rememberSaveable { mutableStateOf("") }
@@ -70,20 +74,30 @@ fun DrawerContent(
             modifier = Modifier.padding(horizontal = 20.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Avatar placeholder
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(TwinMindTeal),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = userName.firstOrNull()?.uppercase() ?: "?",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TwinMindWhite,
+            if (userPhotoUrl != null) {
+                AsyncImage(
+                    model = userPhotoUrl,
+                    contentDescription = "Profile photo",
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop,
                 )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(TwinMindTeal),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = userName.firstOrNull()?.uppercase() ?: "?",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TwinMindWhite,
+                    )
+                }
             }
             Spacer(modifier = Modifier.width(12.dp))
             Column {
@@ -177,6 +191,11 @@ fun DrawerContent(
             icon = TmIcons.Settings,
             text = "Settings",
             onClick = onSettingsClick,
+        )
+        TmDrawerMenuItem(
+            icon = TmIcons.Logout,
+            text = "Sign Out",
+            onClick = onSignOutClick,
             showDivider = false,
         )
 
