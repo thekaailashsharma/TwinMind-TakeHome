@@ -45,10 +45,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlin.math.PI
 import kotlin.math.atan2
-import kotlin.math.cos
-import kotlin.math.sin
 
 // Pixel-perfect palette based on Image 1
 private val SkyBlueTop = Color(0xFF007AFF) // Vibrant Apple-like blue
@@ -88,20 +85,19 @@ fun SignInScreen(
                 .height(250.dp)
                 .align(Alignment.BottomCenter),
         ) {
-            // Strong Orange Glow
+            // Soft, diffuse orange glow (Radial for better blend)
             drawOval(
-                brush = Brush.verticalGradient(
+                brush = Brush.radialGradient(
                     colors = listOf(
-                        Color.Transparent,
-                        SunsetOrangeGlow.copy(alpha = 0.8f),
-                        SunsetPeachGlow,
-                        Color.White
+                        SunsetOrangeGlow.copy(alpha = 0.6f),
+                        SunsetPeachGlow.copy(alpha = 0.3f),
+                        Color.Transparent
                     ),
-                    startY = 0f,
-                    endY = size.height
+                    center = Offset(size.width / 2, size.height),
+                    radius = size.width * 0.8f
                 ),
-                topLeft = Offset(0f, size.height * 0.2f),
-                size = Size(size.width, size.height)
+                topLeft = Offset(0f, size.height * 0.1f),
+                size = Size(size.width, size.height * 1.2f)
             )
 
             // Crisp White Arc
@@ -211,13 +207,8 @@ fun SignInScreen(
                 ),
                 elevation = null,
             ) {
-                // Colored G Logo
-                Text(
-                    text = "G", 
-                    fontSize = 22.sp, 
-                    fontWeight = FontWeight.Bold,
-                    color = if (acceptedTerms) Color(0xFF4285F4) else Color(0xFF4285F4).copy(alpha = 0.5f)
-                )
+                // Colorful Google G Logo
+                GoogleLogo(modifier = Modifier.size(24.dp))
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
                     text = "Continue with Google",
@@ -226,40 +217,94 @@ fun SignInScreen(
                 )
             }
             
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Apple Button (Glass/Translucent)
-            Button(
-                onClick = { },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
-                    .padding(horizontal = 32.dp),
-                enabled = false, // Visual only
-                shape = RoundedCornerShape(28.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.White.copy(alpha = 0.25f), // Glassy
-                    disabledContainerColor = Color.White.copy(alpha = 0.25f),
-                    disabledContentColor = Color.White,
-                ),
-                elevation = null,
-            ) {
-                 Text(
-                    text = "", 
-                    fontSize = 24.sp, 
-                    color = Color.White
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = "Continue with Apple",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color.White
-                )
-            }
+            // Removed Apple Button as requested
 
             Spacer(modifier = Modifier.height(80.dp)) // Space for the arc
         }
+    }
+}
+
+@Composable
+private fun GoogleLogo(modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier) {
+        val centerX = size.width / 2
+        val centerY = size.height / 2
+        val radius = size.width / 2
+        val innerRadius = radius * 0.5f // Adjust for thickness
+
+        // Blue (Right half + bottom right)
+        // Standard Google G construction:
+        // Blue: 0 to -45 deg (approx) and horizontal bar
+        // Green: 45 to 135 deg
+        // Yellow: 135 to 225 deg
+        // Red: 225 to 315 deg (top)
+        
+        // Simplified G shape using arcs
+        val strokeWidth = radius * 0.35f
+        val arcSize = Size(size.width - strokeWidth, size.height - strokeWidth)
+        val arcTopLeft = Offset(strokeWidth / 2, strokeWidth / 2)
+
+        // Red (Top)
+        drawArc(
+            color = Color(0xFFEA4335),
+            startAngle = 195f,
+            sweepAngle = 105f,
+            useCenter = false,
+            topLeft = arcTopLeft,
+            size = arcSize,
+            style = Stroke(width = strokeWidth)
+        )
+
+        // Yellow (Left)
+        drawArc(
+            color = Color(0xFFFBBC05),
+            startAngle = 135f,
+            sweepAngle = 60f,
+            useCenter = false,
+            topLeft = arcTopLeft,
+            size = arcSize,
+            style = Stroke(width = strokeWidth)
+        )
+
+        // Green (Bottom)
+        drawArc(
+            color = Color(0xFF34A853),
+            startAngle = 30f,
+            sweepAngle = 105f,
+            useCenter = false,
+            topLeft = arcTopLeft,
+            size = arcSize,
+            style = Stroke(width = strokeWidth)
+        )
+
+        // Blue (Right + Bar)
+        drawArc(
+            color = Color(0xFF4285F4),
+            startAngle = 300f,
+            sweepAngle = 60f, // Short arc at top right
+            useCenter = false,
+            topLeft = arcTopLeft,
+            size = arcSize,
+            style = Stroke(width = strokeWidth)
+        )
+        
+        // Blue Bar
+        drawRect(
+            color = Color(0xFF4285F4),
+            topLeft = Offset(centerX, centerY - strokeWidth / 2),
+            size = Size(radius, strokeWidth)
+        )
+        
+        // Fix Blue Arc overlap (bottom right)
+        drawArc(
+            color = Color(0xFF4285F4),
+            startAngle = 0f, // Start from right
+            sweepAngle = 45f,
+            useCenter = false,
+            topLeft = arcTopLeft,
+            size = arcSize,
+            style = Stroke(width = strokeWidth)
+        )
     }
 }
 
@@ -334,22 +379,16 @@ private fun LaurelWreath(
                 scale(-1f, 1f, pivot = Offset(w / 2, h / 2))
             }
         }) {
-            // Draw Stem
-            // Curves from bottom-right to top-left (in local coords for Left side)
-            // Left laurel: ) shape. Convex to left.
+            // Draw Stem (Invisible guide, but we calculate positions based on it)
+            // Quadratic Bezier Curve for Stem
+            val p0x = w * 0.9f; val p0y = h * 0.95f
+            val p1x = w * 0.1f; val p1y = h * 0.5f
+            val p2x = w * 0.6f; val p2y = h * 0.05f
             
             // Draw Leaves
-            val leafCount = 7
+            val leafCount = 8 // Increased count for more detail
             for (i in 0 until leafCount) {
                 val t = i.toFloat() / (leafCount - 1)
-                
-                // Quadratic Bezier Curve for Stem
-                // P0: Bottom Right (Start)
-                // P1: Middle Left (Control)
-                // P2: Top Center (End)
-                val p0x = w * 0.9f; val p0y = h * 0.95f
-                val p1x = w * 0.1f; val p1y = h * 0.5f
-                val p2x = w * 0.6f; val p2y = h * 0.05f
                 
                 // Position B(t)
                 val u = 1 - t
@@ -364,15 +403,11 @@ private fun LaurelWreath(
                 val ty = 2 * u * (p1y - p0y) + 2 * t * (p2y - p1y)
                 val tangentAngle = Math.toDegrees(atan2(ty.toDouble(), tx.toDouble())).toFloat()
                 
-                // Leaf Angle: Align with tangent + slight offset to fan out
-                // Tangent points generally Up-Left.
-                // We want leaves to look like they grow OUT of the stem.
-                // Just using tangentAngle aligns them perfectly with the flow.
-                
+                // Leaf Angle: Align with tangent
                 drawLeaf(
                     cx = x,
                     cy = y,
-                    size = 10.dp.toPx(),
+                    size = 10.dp.toPx(), // Slightly smaller for detail
                     angle = tangentAngle, 
                     color = leafColor
                 )
@@ -391,6 +426,7 @@ private fun DrawScope.drawLeaf(
     rotate(degrees = angle, pivot = Offset(cx, cy)) {
         val path = Path().apply {
             // Leaf shape: ()
+            // More pointed/detailed shape
             moveTo(cx, cy + size/2)
             quadraticBezierTo(cx - size/2, cy, cx, cy - size/2)
             quadraticBezierTo(cx + size/2, cy, cx, cy + size/2)
