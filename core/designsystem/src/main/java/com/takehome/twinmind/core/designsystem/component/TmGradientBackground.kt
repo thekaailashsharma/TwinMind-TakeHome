@@ -11,11 +11,12 @@ import androidx.compose.ui.graphics.Color
 
 object TmGradients {
     val SignIn = Brush.verticalGradient(
-        colors = listOf(
-            Color(0xFF4BA3C7),
-            Color(0xFF3A8DB5),
-            Color(0xFF2B7AA3),
-            Color(0xFF1B6B7D),
+        colorStops = arrayOf(
+            0.00f to Color(0xFF5BAFE0),
+            0.30f to Color(0xFF3D97CB),
+            0.60f to Color(0xFF2B80B2),
+            0.85f to Color(0xFF1F6E9C),
+            1.00f to Color(0xFF1F6E9C),
         ),
     )
 
