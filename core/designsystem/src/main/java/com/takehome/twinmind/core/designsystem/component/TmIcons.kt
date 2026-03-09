@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ContentCut
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Mail
 import androidx.compose.material.icons.filled.Menu
@@ -72,4 +73,5 @@ object TmIcons {
     val Warning: ImageVector = Icons.Default.Warning
     val Add: ImageVector = Icons.Default.Add
     val Scissors: ImageVector = Icons.Default.ContentCut
+    val Info: ImageVector = Icons.Default.Info
 }

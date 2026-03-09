@@ -16,6 +16,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.io.File
+import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.sqrt
@@ -68,9 +69,10 @@ class AudioRecorder @Inject constructor(
             val buffer = ByteArray(BUFFER_SIZE)
             var chunkIndex = 0
             var chunkFile = newChunkFile(outputDir, sessionId, chunkIndex)
-            currentWriter = WavWriter(chunkFile)
 
             try {
+                currentWriter = WavWriter(chunkFile)
+
                 while (isActive) {
                     if (isPaused) {
                         delay(100)
@@ -78,7 +80,12 @@ class AudioRecorder @Inject constructor(
                     }
                     val read = audioRecord?.read(buffer, 0, buffer.size) ?: -1
                     if (read > 0) {
-                        currentWriter?.write(buffer, 0, read)
+                        try {
+                            currentWriter?.write(buffer, 0, read)
+                        } catch (ioe: IOException) {
+                            Timber.e(ioe, "AudioRecorder write failed, likely due to low storage")
+                            break
+                        }
                         val amplitude = computeAmplitude(buffer, read)
                         _amplitudes.tryEmit(amplitude)
 
@@ -112,6 +119,8 @@ class AudioRecorder @Inject constructor(
                         }
                     }
                 }
+            } catch (ioe: IOException) {
+                Timber.e(ioe, "AudioRecorder I/O error, stopping recording (likely low storage)")
             } finally {
                 val duration = currentWriter?.durationMs ?: 0L
                 currentWriter?.close()
@@ -205,7 +214,7 @@ class AudioRecorder @Inject constructor(
 
     companion object {
         private const val BUFFER_SIZE = 4096
-        const val CHUNK_DURATION_MS = 15_000L
+        const val CHUNK_DURATION_MS = 30_000L
         private const val OVERLAP_MS = 2_000L
         private val OVERLAP_BYTES =
             (WavWriter.SAMPLE_RATE * WavWriter.CHANNELS * (WavWriter.BITS_PER_SAMPLE / 8) * OVERLAP_MS / 1000).toInt()

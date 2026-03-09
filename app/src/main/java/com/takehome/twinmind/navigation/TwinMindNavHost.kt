@@ -216,7 +216,6 @@ fun TwinMindNavHost(
                             backStack.add(SessionDetailRoute(sessionId))
                         }
                     },
-                    onChatClick = {},
                     onStopClick = {
                         val sessionId = recordingViewModel.stopRecording()
                         if (sessionId != null) {
@@ -224,11 +223,18 @@ fun TwinMindNavHost(
                             backStack.add(SessionDetailRoute(sessionId))
                         }
                     },
+                    onLowStorageBackClick = {
+                        // For low storage, just leave the recording flow and return to dashboard
+                        backStack.clear()
+                        backStack.add(DashboardRoute)
+                    },
                     onNotesCardClick = {},
                     onTranscriptCardClick = { showTranscriptSheet = true },
                     isRecording = uiState.isRecording,
                     isPaused = uiState.isPaused,
                     silenceWarning = uiState.silenceWarning,
+                    errorMessage = uiState.errorMessage,
+                    micSourceChanged = uiState.micSourceChanged,
                 )
 
                 if (showTranscriptSheet) {

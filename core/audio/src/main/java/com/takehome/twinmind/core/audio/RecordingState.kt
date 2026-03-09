@@ -9,4 +9,6 @@ data class RecordingState(
     val currentAmplitude: Float = 0f,
     val chunkCount: Int = 0,
     val silenceDetected: Boolean = false,
+    val errorMessage: String? = null,
+    val micSourceChanged: String? = null,
 )

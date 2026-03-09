@@ -237,7 +237,7 @@ class GeminiService @Inject constructor() {
     }
 
     companion object {
-        const val MODEL_FLASH = "gemini-2.5-flash-lite"
+        const val MODEL_FLASH = "gemini-2.5-flash"
         const val MODEL_PRO = MODEL_FLASH
 
         private const val BASE_URL = "https://generativelanguage.googleapis.com/v1beta"

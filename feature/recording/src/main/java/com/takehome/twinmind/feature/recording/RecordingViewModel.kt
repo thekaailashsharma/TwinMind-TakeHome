@@ -40,6 +40,8 @@ data class RecordingUiState(
     val userNotes: String = "",
     val silenceWarning: Boolean = false,
     val statusText: String = "Recording...",
+    val errorMessage: String? = null,
+    val micSourceChanged: String? = null,
 )
 
 @HiltViewModel
@@ -83,10 +85,13 @@ class RecordingViewModel @Inject constructor(
             userNotes = notes,
             silenceWarning = recState.silenceDetected,
             statusText = when {
+                recState.errorMessage != null -> recState.errorMessage!!
                 recState.isPaused -> recState.pauseReason ?: "Paused"
                 recState.isRecording -> "I'm listening and taking notes..."
                 else -> "Ready"
             },
+            errorMessage = recState.errorMessage,
+            micSourceChanged = recState.micSourceChanged,
         )
     }.stateIn(
         scope = viewModelScope,

@@ -40,7 +40,6 @@ import com.takehome.twinmind.core.designsystem.theme.TwinMindWhite
 @Composable
 fun TmRecordingBar(
     elapsedTime: String,
-    onChatClick: () -> Unit,
     onStopClick: () -> Unit,
     modifier: Modifier = Modifier,
     isRecording: Boolean = true,
@@ -59,89 +58,60 @@ fun TmRecordingBar(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            // Chat button
+            // Wide recording pill with waveform + timer + stop
             Surface(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(24.dp))
-                    .clickable(onClick = onChatClick),
-                shape = RoundedCornerShape(24.dp),
-                color = Color.White,
-                border = androidx.compose.foundation.BorderStroke(
-                    1.dp,
-                    Color(0xFFE0E0E0),
-                ),
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        imageVector = TmIcons.Sparkle,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = TwinMindDarkNavy,
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "Chat",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = TwinMindDarkNavy,
-                    )
-                }
-            }
-
-            // Center timer with waveform
-            Surface(
+                modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(28.dp),
                 color = TwinMindDarkNavy,
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    if (isRecording) {
-                        WaveformBars()
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        if (isRecording) {
+                            WaveformBars()
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
+                        Text(
+                            text = elapsedTime,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = TwinMindWhite,
+                        )
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = elapsedTime,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = TwinMindWhite,
-                    )
-                }
-            }
 
-            // Stop button
-            Surface(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(24.dp))
-                    .clickable(onClick = onStopClick),
-                shape = RoundedCornerShape(24.dp),
-                color = Color.White,
-                border = androidx.compose.foundation.BorderStroke(
-                    1.dp,
-                    Color(0xFFE0E0E0),
-                ),
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Box(
+                    Surface(
                         modifier = Modifier
-                            .size(14.dp)
-                            .clip(RoundedCornerShape(3.dp))
-                            .background(TwinMindRecordingRed),
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "Stop",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = TwinMindDarkNavy,
-                    )
+                            .clip(RoundedCornerShape(24.dp))
+                            .clickable(onClick = onStopClick),
+                        shape = RoundedCornerShape(24.dp),
+                        color = TwinMindWhite,
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(14.dp)
+                                    .clip(RoundedCornerShape(3.dp))
+                                    .background(TwinMindRecordingRed),
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Stop",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = TwinMindDarkNavy,
+                            )
+                        }
+                    }
                 }
             }
         }

@@ -21,6 +21,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -42,6 +43,7 @@ import com.takehome.twinmind.core.designsystem.component.TmRecordingIndicator
 import com.takehome.twinmind.core.designsystem.theme.TwinMindDarkNavy
 import com.takehome.twinmind.core.designsystem.theme.TwinMindGray
 import com.takehome.twinmind.core.designsystem.theme.TwinMindTeal
+import com.takehome.twinmind.core.designsystem.theme.TwinMindWhite
 
 @Composable
 fun RecordingScreen(
@@ -50,14 +52,16 @@ fun RecordingScreen(
     transcriptText: String,
     statusText: String,
     onBackClick: () -> Unit,
-    onChatClick: () -> Unit,
     onStopClick: () -> Unit,
+    onLowStorageBackClick: () -> Unit,
     onNotesCardClick: () -> Unit,
     onTranscriptCardClick: () -> Unit,
     modifier: Modifier = Modifier,
     isRecording: Boolean = true,
     isPaused: Boolean = false,
     silenceWarning: Boolean = false,
+    errorMessage: String? = null,
+    micSourceChanged: String? = null,
 ) {
     var userNotes by rememberSaveable { mutableStateOf("") }
 
@@ -67,12 +71,17 @@ fun RecordingScreen(
             TmBackTopBar(onBackClick = onBackClick)
         },
         bottomBar = {
-            TmRecordingBar(
-                elapsedTime = elapsedTime,
-                onChatClick = onChatClick,
-                onStopClick = onStopClick,
-                isRecording = isRecording && !isPaused,
-            )
+            if (errorMessage == null) {
+                TmRecordingBar(
+                    elapsedTime = elapsedTime,
+                    onStopClick = onStopClick,
+                    isRecording = isRecording && !isPaused,
+                )
+            } else {
+                LowStorageBar(
+                    onFixStorageClick = onLowStorageBackClick,
+                )
+            }
         },
         containerColor = Color(0xFFFAF8F5),
     ) { innerPadding ->
@@ -128,6 +137,70 @@ fun RecordingScreen(
                             text = "No audio detected for 10+ seconds. Is your microphone working?",
                             fontSize = 13.sp,
                             color = Color(0xFF5D4037),
+                        )
+                    }
+                }
+            }
+
+            AnimatedVisibility(
+                visible = errorMessage != null,
+                enter = fadeIn(),
+                exit = fadeOut(),
+            ) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE)),
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            imageVector = TmIcons.Warning,
+                            contentDescription = null,
+                            tint = Color(0xFFD32F2F),
+                            modifier = Modifier.size(20.dp),
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = errorMessage ?: "",
+                            fontSize = 13.sp,
+                            color = Color(0xFFB71C1C),
+                        )
+                    }
+                }
+            }
+
+            AnimatedVisibility(
+                visible = micSourceChanged != null,
+                enter = fadeIn(),
+                exit = fadeOut(),
+            ) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD)),
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            imageVector = TmIcons.Info,
+                            contentDescription = null,
+                            tint = Color(0xFF1565C0),
+                            modifier = Modifier.size(20.dp),
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = micSourceChanged ?: "",
+                            fontSize = 13.sp,
+                            color = Color(0xFF0D47A1),
                         )
                     }
                 }
@@ -250,6 +323,74 @@ fun RecordingScreen(
             }
 
             Spacer(modifier = Modifier.height(24.dp))
+        }
+    }
+}
+
+@Composable
+private fun LowStorageBar(
+    onFixStorageClick: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth(),
+        color = Color.White,
+        tonalElevation = 8.dp,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(28.dp),
+                color = TwinMindDarkNavy,
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween,
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text(
+                            text = "Recording stopped - Low storage",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = TwinMindWhite,
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Free up space, then start a new note.",
+                            fontSize = 12.sp,
+                            color = Color(0xFFCFD8DC),
+                        )
+                    }
+
+                    Surface(
+                        modifier = Modifier.clickable(onClick = onFixStorageClick),
+                        shape = RoundedCornerShape(24.dp),
+                        color = TwinMindWhite,
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = "Go back",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = TwinMindDarkNavy,
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
