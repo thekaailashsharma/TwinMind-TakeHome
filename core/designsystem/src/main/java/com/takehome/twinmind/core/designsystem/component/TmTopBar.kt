@@ -22,6 +22,12 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -64,31 +70,34 @@ fun TmViewDigestButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Button(
-        onClick = onClick,
-        modifier = modifier,
-        shape = RoundedCornerShape(20.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = TwinMindWhite,
-            contentColor = TwinMindDarkNavy,
-        ),
-        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-        elevation = ButtonDefaults.buttonElevation(defaultElevation = 1.dp),
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(
+                Brush.horizontalGradient(
+                    colors = listOf(
+                        Color(0xFFE0F2F1),
+                        Color(0xFFB2DFDB),
+                    ),
+                ),
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                imageVector = TmIcons.DigestIcon,
-                contentDescription = null,
-                modifier = Modifier.size(16.dp),
-                tint = TwinMindTeal,
-            )
-            Spacer(modifier = Modifier.width(6.dp))
-            Text(
-                text = "View Digest",
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Medium,
-            )
-        }
+        Icon(
+            imageVector = TmIcons.DigestIcon,
+            contentDescription = null,
+            modifier = Modifier.size(16.dp),
+            tint = TwinMindTeal,
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+            text = "View Digest",
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
+            color = TwinMindDarkNavy,
+        )
     }
 }
 

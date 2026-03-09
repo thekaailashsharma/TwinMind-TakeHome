@@ -309,14 +309,22 @@ private fun NotesTabContent(
             )
         },
         minLines = 6,
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(12.dp),
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
         keyboardActions = KeyboardActions(
             onDone = { focusManager.clearFocus() },
         ),
+        textStyle = androidx.compose.ui.text.TextStyle(
+            fontSize = 15.sp,
+            color = TwinMindDarkNavy,
+            lineHeight = 22.sp,
+        ),
         colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = TwinMindTeal,
-            unfocusedBorderColor = TwinMindGray.copy(alpha = 0.3f),
+            focusedTextColor = TwinMindDarkNavy,
+            unfocusedTextColor = TwinMindDarkNavy,
+            cursorColor = TwinMindTeal,
+            focusedBorderColor = TwinMindTeal.copy(alpha = 0.4f),
+            unfocusedBorderColor = TwinMindGray.copy(alpha = 0.15f),
             focusedContainerColor = Color.White,
             unfocusedContainerColor = Color.White,
         ),

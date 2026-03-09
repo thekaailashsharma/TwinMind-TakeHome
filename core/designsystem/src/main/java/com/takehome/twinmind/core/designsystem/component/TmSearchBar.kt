@@ -16,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -59,7 +60,12 @@ fun TmMemorySearchBar(
                     }
                     withStyle(
                         SpanStyle(
-                            color = TwinMindOrange,
+                            brush = Brush.horizontalGradient(
+                                colors = listOf(
+                                    Color(0xFFE8863A), // TwinMindOrange
+                                    Color(0xFFFFB74D), // Lighter orange
+                                ),
+                            ),
                             fontWeight = FontWeight.SemiBold,
                         ),
                     ) {

@@ -313,7 +313,7 @@ fun RecordingScreen(
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
                         text = transcriptText.ifEmpty {
-                            "The transcript will update every 30s, it will appear here automatically as you speak"
+                            "Transcript will appear here as you speak…"
                         },
                         fontSize = 14.sp,
                         color = if (transcriptText.isEmpty()) TwinMindTeal else TwinMindDarkNavy,

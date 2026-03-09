@@ -1,5 +1,6 @@
 package com.takehome.twinmind.feature.dashboard
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,6 +15,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import com.takehome.twinmind.core.designsystem.R as DesignR
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -31,7 +35,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -116,22 +119,18 @@ fun PersonalizationScreen(
         ) {
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Hero banner with labels
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(180.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(
-                        Brush.horizontalGradient(
-                            colors = listOf(
-                                Color(0xFF5CB8D6),
-                                Color(0xFF8FD4E8),
-                                Color(0xFFF5C8A0),
-                            ),
-                        ),
-                    ),
+                    .height(200.dp)
+                    .clip(RoundedCornerShape(16.dp)),
             ) {
+                Image(
+                    painter = painterResource(id = DesignR.drawable.plant),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                )
                 Column(
                     modifier = Modifier
                         .padding(16.dp)

@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -19,6 +21,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -49,44 +53,56 @@ fun TmDashboardInfoCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     backgroundColor: Color = Color(0xFFFFF8F2),
+    backgroundBrush: Brush? = null,
     iconTint: Color = TwinMindOrange,
     borderColor: Color = Color(0xFFFFE8D4),
 ) {
+    val containerColor = if (backgroundBrush != null) Color.Transparent else backgroundColor
+    
     Card(
         onClick = onClick,
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = backgroundColor),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
         border = BorderStroke(1.dp, borderColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .then(
+                    if (backgroundBrush != null) Modifier.background(backgroundBrush)
+                    else Modifier
+                )
         ) {
-            Box(
-                modifier = Modifier.fillMaxWidth(),
-                contentAlignment = Alignment.TopEnd,
+            Column(
+                modifier = Modifier.padding(16.dp),
             ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    modifier = Modifier.size(28.dp),
-                    tint = iconTint,
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.TopEnd,
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        modifier = Modifier.size(28.dp),
+                        tint = iconTint,
+                    )
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+                Text(
+                    text = title,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TwinMindDarkNavy,
+                )
+                Text(
+                    text = "$subtitle >",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = TwinMindTeal,
                 )
             }
-            Spacer(modifier = Modifier.height(24.dp))
-            Text(
-                text = title,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = TwinMindDarkNavy,
-            )
-            Text(
-                text = "$subtitle >",
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Medium,
-                color = TwinMindTeal,
-            )
         }
     }
 }

@@ -27,7 +27,9 @@ import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import com.takehome.twinmind.feature.auth.AuthViewModel
 import com.takehome.twinmind.feature.auth.LocationPermissionScreen
+import com.takehome.twinmind.feature.auth.OnboardingScreen
 import com.takehome.twinmind.feature.auth.SignInScreen
+import com.takehome.twinmind.feature.auth.SplashScreen
 import com.takehome.twinmind.feature.dashboard.DashboardScreen
 import com.takehome.twinmind.feature.dashboard.DashboardViewModel
 import com.takehome.twinmind.feature.dashboard.MemoriesScreen
@@ -57,7 +59,7 @@ fun TwinMindNavHost(
     isLoggedIn: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val startRoute = if (isLoggedIn) DashboardRoute else SignInRoute
+    val startRoute = SplashRoute
     val backStack = rememberNavBackStack(startRoute)
     val context = LocalContext.current
 
@@ -67,14 +69,42 @@ fun TwinMindNavHost(
         onBack = { if (backStack.size > 1) backStack.removeLastOrNull() },
         entryProvider = entryProvider {
 
+            entry<SplashRoute> {
+                SplashScreen(
+                    onFinished = {
+                        backStack.clear()
+                        if (isLoggedIn) {
+                            backStack.add(DashboardRoute)
+                        } else {
+                            backStack.add(OnboardingRoute)
+                        }
+                    },
+                )
+            }
+
+            entry<OnboardingRoute> {
+                OnboardingScreen(
+                    onGetStarted = {
+                        backStack.clear()
+                        backStack.add(SignInRoute)
+                    },
+                )
+            }
+
             entry<SignInRoute> {
                 val authViewModel: AuthViewModel = hiltViewModel()
                 val uiState by authViewModel.uiState.collectAsStateWithLifecycle()
 
+                // Only navigate when user actively signs in (transition from false -> true)
+                var hasNavigated by rememberSaveable { mutableStateOf(false) }
                 LaunchedEffect(uiState.isSignedIn) {
-                    if (uiState.isSignedIn) {
-                        backStack.clear()
-                        backStack.add(DashboardRoute)
+                    if (uiState.isSignedIn && !hasNavigated) {
+                        // Double-check Firebase state to prevent stale ViewModel cache
+                        if (com.google.firebase.auth.FirebaseAuth.getInstance().currentUser != null) {
+                            hasNavigated = true
+                            backStack.clear()
+                            backStack.add(DashboardRoute)
+                        }
                     }
                 }
 
@@ -132,14 +162,13 @@ fun TwinMindNavHost(
                     onChatClick = { backStack.add(MemoriesRoute(initialTab = 1)) },
                     onViewTasksClick = {},
                     onViewMemoriesClick = { backStack.add(MemoriesRoute(initialTab = 0)) },
-                    onManageCalendarsClick = {},
                     onPersonalizationClick = { backStack.add(PersonalizationRoute) },
                     onSettingsClick = {},
                     onUploadAudioClick = {},
                     onSignOutClick = {
                         dashboardViewModel.signOut()
                         backStack.clear()
-                        backStack.add(SignInRoute)
+                        backStack.add(OnboardingRoute)
                     },
                 )
             }
