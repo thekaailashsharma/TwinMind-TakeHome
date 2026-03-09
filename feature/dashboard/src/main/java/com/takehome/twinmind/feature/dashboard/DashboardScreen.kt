@@ -69,12 +69,22 @@ fun DashboardScreen(
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
-            ModalDrawerSheet {
+            ModalDrawerSheet(
+                drawerContainerColor = Color(0xFFF0F4F7),
+            ) {
                 DrawerContent(
                     userName = userName,
                     userEmail = userEmail,
                     userPhotoUrl = userPhotoUrl,
                     isPro = false,
+                    onViewNotesClick = {
+                        scope.launch { drawerState.close() }
+                        onViewMemoriesClick()
+                    },
+                    onViewChatsClick = {
+                        scope.launch { drawerState.close() }
+                        onChatClick()
+                    },
                     onPersonalizationClick = {
                         scope.launch { drawerState.close() }
                         onPersonalizationClick()

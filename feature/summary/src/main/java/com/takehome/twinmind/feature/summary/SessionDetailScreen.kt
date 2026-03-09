@@ -55,6 +55,7 @@ fun SessionDetailScreen(
     onTasksCardClick: () -> Unit,
     onChatClick: () -> Unit,
     onMoreClick: () -> Unit,
+    onEditClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     onChatHistoryClick: () -> Unit = {},
 ) {
@@ -132,6 +133,7 @@ fun SessionDetailScreen(
                     onTranscriptCardClick = onTranscriptCardClick,
                     onTasksCardClick = onTasksCardClick,
                     onChatHistoryClick = onChatHistoryClick,
+                    onEditClick = onEditClick,
                 )
             }
 
@@ -220,6 +222,7 @@ private fun CompletedContent(
     onTranscriptCardClick: () -> Unit,
     onTasksCardClick: () -> Unit,
     onChatHistoryClick: () -> Unit = {},
+    onEditClick: () -> Unit = {},
 ) {
     // Notes & Summary card
     Card(
@@ -293,7 +296,7 @@ private fun CompletedContent(
                 horizontalArrangement = Arrangement.End,
             ) {
                 Button(
-                    onClick = {},
+                    onClick = onEditClick,
                     shape = RoundedCornerShape(20.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color.White,

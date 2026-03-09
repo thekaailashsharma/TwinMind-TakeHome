@@ -13,7 +13,7 @@ data object LocationPermissionRoute : NavKey
 data object DashboardRoute : NavKey
 
 @Serializable
-data object RecordingRoute : NavKey
+data class RecordingRoute(val recordingId: String) : NavKey
 
 @Serializable
 data object PersonalizationRoute : NavKey
@@ -23,3 +23,6 @@ data class SessionDetailRoute(val sessionId: String) : NavKey
 
 @Serializable
 data class ChatRoute(val sessionId: String) : NavKey
+
+@Serializable
+data class MemoriesRoute(val initialTab: Int = 0) : NavKey

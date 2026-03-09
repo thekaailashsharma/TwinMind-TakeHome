@@ -30,6 +30,8 @@ import com.takehome.twinmind.feature.auth.LocationPermissionScreen
 import com.takehome.twinmind.feature.auth.SignInScreen
 import com.takehome.twinmind.feature.dashboard.DashboardScreen
 import com.takehome.twinmind.feature.dashboard.DashboardViewModel
+import com.takehome.twinmind.feature.dashboard.MemoriesScreen
+import com.takehome.twinmind.feature.dashboard.MemoriesViewModel
 import com.takehome.twinmind.feature.dashboard.PersonalizationScreen
 import com.takehome.twinmind.feature.dashboard.PersonalizationViewModel
 import com.takehome.twinmind.feature.recording.RecordingScreen
@@ -46,6 +48,7 @@ import com.takehome.twinmind.feature.summary.SummaryBottomSheet
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.UUID
 import timber.log.Timber
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -124,11 +127,11 @@ fun TwinMindNavHost(
                     userName = uiState.userName,
                     userEmail = uiState.userEmail,
                     userPhotoUrl = uiState.userPhotoUrl,
-                    onCaptureNotesClick = { backStack.add(RecordingRoute) },
+                    onCaptureNotesClick = { backStack.add(RecordingRoute(recordingId = UUID.randomUUID().toString())) },
                     onViewDigestClick = {},
-                    onChatClick = {},
+                    onChatClick = { backStack.add(MemoriesRoute(initialTab = 1)) },
                     onViewTasksClick = {},
-                    onViewMemoriesClick = {},
+                    onViewMemoriesClick = { backStack.add(MemoriesRoute(initialTab = 0)) },
                     onManageCalendarsClick = {},
                     onPersonalizationClick = { backStack.add(PersonalizationRoute) },
                     onSettingsClick = {},
@@ -291,6 +294,10 @@ fun TwinMindNavHost(
                         backStack.add(ChatRoute(route.sessionId))
                     },
                     onMoreClick = {},
+                    onEditClick = {
+                        summarySheetInitialTab = 1
+                        showSummarySheet = true
+                    },
                     onChatHistoryClick = {
                         backStack.add(ChatRoute(route.sessionId))
                     },
@@ -306,6 +313,7 @@ fun TwinMindNavHost(
                         isLoading = state.isGeneratingSummary,
                         initialTab = summarySheetInitialTab,
                         onDismiss = { showSummarySheet = false },
+                        onNotesChanged = { sessionDetailViewModel.updateNotes(it) },
                         onShareClick = {
                             val shareText = buildString {
                                 if (state.summaryTitle.isNotBlank()) {
@@ -381,6 +389,28 @@ fun TwinMindNavHost(
                     onSaveClick = { name, role, language, _, additionalInfo ->
                         personalizationViewModel.save(name, role, language, additionalInfo)
                         backStack.removeLastOrNull()
+                    },
+                )
+            }
+
+            entry<MemoriesRoute> { route ->
+                val memoriesViewModel: MemoriesViewModel = hiltViewModel()
+                val state by memoriesViewModel.uiState.collectAsStateWithLifecycle()
+
+                LaunchedEffect(route.initialTab) {
+                    memoriesViewModel.setInitialTab(route.initialTab)
+                }
+
+                MemoriesScreen(
+                    state = state,
+                    onBackClick = { backStack.removeLastOrNull() },
+                    onTabSelected = { idx -> memoriesViewModel.selectTab(idx) },
+                    onSearchChanged = { q -> memoriesViewModel.setSearch(q) },
+                    onSessionClick = { sessionId ->
+                        backStack.add(SessionDetailRoute(sessionId))
+                    },
+                    onChatClick = { sessionId ->
+                        backStack.add(ChatRoute(sessionId))
                     },
                 )
             }

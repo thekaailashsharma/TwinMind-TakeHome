@@ -12,6 +12,7 @@ import com.takehome.twinmind.core.model.Summary
 import com.takehome.twinmind.core.model.SummaryStatus
 import com.takehome.twinmind.core.model.TranscriptSegment
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -52,15 +53,20 @@ class SessionDetailViewModel @Inject constructor(
     private val summaryRepository: SummaryRepository,
     private val chatRepository: ChatRepository,
     private val geminiService: GeminiService,
+    private val cloudSyncRepository: com.takehome.twinmind.core.data.repository.CloudSyncRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SessionDetailUiState())
     val uiState: StateFlow<SessionDetailUiState> = _uiState.asStateFlow()
 
+    private var notesSaveJob: Job? = null
+    private var didCloudSyncForSession: Boolean = false
+
     fun loadSession(sessionId: String) {
         viewModelScope.launch {
             Timber.d("SessionDetailViewModel.loadSession(%s)", sessionId)
             _uiState.update { it.copy(sessionId = sessionId) }
+            didCloudSyncForSession = false
 
             val session = sessionRepository.getById(sessionId)
             val dateFormat = SimpleDateFormat("MMM dd · h:mm a", Locale.getDefault())
@@ -117,6 +123,21 @@ class SessionDetailViewModel @Inject constructor(
         }
     }
 
+    fun updateNotes(notes: String) {
+        val sessionId = _uiState.value.sessionId
+        _uiState.update { it.copy(userNotes = notes) }
+        if (sessionId.isBlank()) return
+
+        notesSaveJob?.cancel()
+        notesSaveJob = viewModelScope.launch {
+            delay(350)
+            val existing = sessionRepository.getById(sessionId) ?: return@launch
+            val normalized = notes.takeIf { it.isNotBlank() }
+            sessionRepository.update(existing.copy(notes = normalized))
+            cloudSyncRepository.syncNotes(sessionId, normalized)
+        }
+    }
+
     private suspend fun observeTranscriptsAndGenerate(sessionId: String) {
         viewModelScope.launch {
             transcriptRepository.observeBySession(sessionId).collect { segments ->
@@ -128,6 +149,11 @@ class SessionDetailViewModel @Inject constructor(
                         transcriptPreview = preview,
                         transcriptDuration = duration,
                     )
+                }
+
+                if (!didCloudSyncForSession && segments.isNotEmpty()) {
+                    didCloudSyncForSession = true
+                    cloudSyncRepository.syncSession(sessionId)
                 }
             }
         }
@@ -193,6 +219,12 @@ class SessionDetailViewModel @Inject constructor(
             )
             summaryRepository.save(summary)
 
+            // Persist the generated heading/title to the Session (used by Memories list + Firestore sync).
+            val session = sessionRepository.getById(sessionId)
+            if (session != null) {
+                sessionRepository.update(session.copy(title = parsed.title.takeIf { it.isNotBlank() } ?: session.title))
+            }
+
             _uiState.update {
                 it.copy(
                     isGeneratingSummary = false,
@@ -203,6 +235,8 @@ class SessionDetailViewModel @Inject constructor(
                     actionItems = parsed.actionItems,
                 )
             }
+
+            cloudSyncRepository.syncSession(sessionId)
         } catch (e: Exception) {
             Timber.e(e, "Summary generation failed for session %s", sessionId)
             summaryRepository.save(

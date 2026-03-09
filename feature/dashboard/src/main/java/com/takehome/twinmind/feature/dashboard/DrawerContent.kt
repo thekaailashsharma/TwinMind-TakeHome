@@ -2,6 +2,7 @@ package com.takehome.twinmind.feature.dashboard
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,12 +20,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -42,7 +40,6 @@ import com.takehome.twinmind.core.designsystem.component.TmIcons
 import com.takehome.twinmind.core.designsystem.component.TmProBadge
 import com.takehome.twinmind.core.designsystem.theme.TwinMindDarkNavy
 import com.takehome.twinmind.core.designsystem.theme.TwinMindGray
-import com.takehome.twinmind.core.designsystem.theme.TwinMindLightGray
 import com.takehome.twinmind.core.designsystem.theme.TwinMindOrange
 import com.takehome.twinmind.core.designsystem.theme.TwinMindTeal
 import com.takehome.twinmind.core.designsystem.theme.TwinMindWhite
@@ -53,17 +50,18 @@ fun DrawerContent(
     userEmail: String,
     userPhotoUrl: String?,
     isPro: Boolean,
+    onViewNotesClick: () -> Unit,
+    onViewChatsClick: () -> Unit,
     onPersonalizationClick: () -> Unit,
     onUploadAudioClick: () -> Unit,
     onSettingsClick: () -> Unit,
     onSignOutClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var searchQuery by rememberSaveable { mutableStateOf("") }
-
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .background(Color(0xFFF0F4F7))
             .statusBarsPadding()
             .verticalScroll(rememberScrollState()),
     ) {
@@ -125,35 +123,47 @@ fun DrawerContent(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // Search field
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = { searchQuery = it },
+        // "View Notes & Chats" search bar (navigates to Memories)
+        Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp),
-            placeholder = {
+                .padding(horizontal = 20.dp)
+                .clickable(onClick = onViewNotesClick),
+            shape = RoundedCornerShape(14.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            border = BorderStroke(1.dp, Color(0xFFE2E6EA)),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Text(
                     text = "View Notes & Chats",
+                    fontSize = 14.sp,
                     color = TwinMindGray,
+                    modifier = Modifier.weight(1f),
                 )
-            },
-            trailingIcon = {
                 Icon(
                     imageVector = TmIcons.Search,
-                    contentDescription = "Search",
-                    tint = TwinMindDarkNavy,
+                    contentDescription = null,
+                    tint = TwinMindGray,
                 )
-            },
-            singleLine = true,
-            shape = RoundedCornerShape(12.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = TwinMindDarkNavy,
-                unfocusedBorderColor = TwinMindLightGray,
-            ),
-        )
+            }
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
+
+        TmDrawerMenuItem(
+            icon = TmIcons.Folder,
+            text = "Notes",
+            onClick = onViewNotesClick,
+        )
+        TmDrawerMenuItem(
+            icon = TmIcons.Chat,
+            text = "Chats",
+            onClick = onViewChatsClick,
+        )
 
         // Menu items
         TmDrawerMenuItem(

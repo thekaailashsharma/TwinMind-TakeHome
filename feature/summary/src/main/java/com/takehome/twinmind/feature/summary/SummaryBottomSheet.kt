@@ -1,6 +1,8 @@
 package com.takehome.twinmind.feature.summary
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -23,6 +25,8 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -33,7 +37,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.takehome.twinmind.core.designsystem.component.TmBottomSheetHeader
@@ -63,6 +70,7 @@ fun SummaryBottomSheet(
     onRegenerateClick: () -> Unit,
     onEditClick: () -> Unit,
     onShareWithAttendeesClick: () -> Unit,
+    onNotesChanged: (String) -> Unit,
     modifier: Modifier = Modifier,
     isLoading: Boolean = false,
     initialTab: Int = 0,
@@ -107,7 +115,10 @@ fun SummaryBottomSheet(
                         isLoading = isLoading,
                         onShareWithAttendeesClick = onShareWithAttendeesClick,
                     )
-                    1 -> NotesTabContent(notesText = notesText)
+                    1 -> NotesTabContent(
+                        notesText = notesText,
+                        onNotesChanged = onNotesChanged,
+                    )
                     2 -> TranscriptTabContent(segments = transcriptSegments)
                 }
 
@@ -280,12 +291,35 @@ private fun SummaryTabContent(
 }
 
 @Composable
-private fun NotesTabContent(notesText: String) {
-    Text(
-        text = notesText.ifEmpty { "No notes captured." },
-        fontSize = 15.sp,
-        color = TwinMindDarkNavy,
-        lineHeight = 22.sp,
+private fun NotesTabContent(
+    notesText: String,
+    onNotesChanged: (String) -> Unit,
+) {
+    val focusManager = LocalFocusManager.current
+
+    OutlinedTextField(
+        value = notesText,
+        onValueChange = onNotesChanged,
+        modifier = Modifier.fillMaxWidth(),
+        placeholder = {
+            Text(
+                text = "Add your notes here…",
+                fontSize = 14.sp,
+                color = TwinMindGray,
+            )
+        },
+        minLines = 6,
+        shape = RoundedCornerShape(14.dp),
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+        keyboardActions = KeyboardActions(
+            onDone = { focusManager.clearFocus() },
+        ),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = TwinMindTeal,
+            unfocusedBorderColor = TwinMindGray.copy(alpha = 0.3f),
+            focusedContainerColor = Color.White,
+            unfocusedContainerColor = Color.White,
+        ),
     )
 }
 

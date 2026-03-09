@@ -19,6 +19,11 @@ class ChatRepository @Inject constructor(
             entities.map { it.toDomain() }
         }
 
+    fun observeAll(): Flow<List<ChatMessage>> =
+        chatMessageDao.observeAll().map { entities ->
+            entities.map { it.toDomain() }
+        }
+
     suspend fun getBySession(sessionId: String): List<ChatMessage> =
         chatMessageDao.getBySession(sessionId).map { it.toDomain() }
 

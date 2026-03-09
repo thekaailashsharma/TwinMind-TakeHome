@@ -50,6 +50,7 @@ class ChatViewModel @Inject constructor(
     private val chatRepository: ChatRepository,
     private val transcriptRepository: TranscriptRepository,
     private val summaryRepository: SummaryRepository,
+    private val cloudSyncRepository: com.takehome.twinmind.core.data.repository.CloudSyncRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ChatUiState())
@@ -122,6 +123,7 @@ class ChatViewModel @Inject constructor(
 
         viewModelScope.launch {
             chatRepository.save(userMessage)
+            cloudSyncRepository.syncChatMessage(userMessage)
 
             val chatHistory = _uiState.value.messages
                 .filter { it.role == "user" || (it.role == "model" && !it.isStreaming) }
@@ -171,6 +173,7 @@ class ChatViewModel @Inject constructor(
                     modelName = _uiState.value.currentModelName,
                 )
                 chatRepository.save(aiMessage)
+                cloudSyncRepository.syncChatMessage(aiMessage)
 
                 finalizeStreamingMessage(
                     aiMessage.id,
