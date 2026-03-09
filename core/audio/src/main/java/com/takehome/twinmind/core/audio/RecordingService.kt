@@ -104,16 +104,23 @@ class RecordingService : Service() {
             return
         }
 
-        ServiceCompat.startForeground(
-            this,
-            NOTIFICATION_ID,
-            buildNotification("Recording...", isPaused = false),
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-            } else {
-                0
-            },
-        )
+        try {
+            ServiceCompat.startForeground(
+                this,
+                NOTIFICATION_ID,
+                buildNotification("Recording...", isPaused = false),
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+                } else {
+                    0
+                },
+            )
+        } catch (e: SecurityException) {
+            Timber.e(e, "Cannot start foreground service - microphone permission not granted")
+            stateHolder.updateState { copy(isRecording = false) }
+            stopSelf()
+            return
+        }
 
         val outputDir = filesDir
         audioRecorder.start(outputDir, sessionId, serviceScope)

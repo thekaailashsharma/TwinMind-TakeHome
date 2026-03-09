@@ -48,10 +48,12 @@ class SummaryViewModel @Inject constructor(
 
     fun loadSummary(sessionId: String, userNotes: String = "") {
         viewModelScope.launch {
+            Timber.d("SummaryViewModel.loadSummary(sessionId=%s)", sessionId)
             _uiState.update { it.copy(isLoading = true, error = null) }
 
             val existing = summaryRepository.getBySession(sessionId)
             if (existing != null && existing.status == SummaryStatus.COMPLETED) {
+                Timber.d("loadSummary: found existing COMPLETED summary for sessionId=%s", sessionId)
                 val transcript = transcriptRepository.getFullTranscript(sessionId)
                 _uiState.update {
                     it.copy(
@@ -73,12 +75,18 @@ class SummaryViewModel @Inject constructor(
                 return@launch
             }
 
+            Timber.d("loadSummary: no completed summary, waiting for transcript for sessionId=%s", sessionId)
             val transcript = withTimeoutOrNull(30_000) {
                 transcriptRepository.observeBySession(sessionId)
                     .map { segments -> segments.joinToString(" ") { it.text } }
                     .filter { it.isNotBlank() }
                     .first()
-            } ?: transcriptRepository.getFullTranscript(sessionId)
+            } ?: run {
+                Timber.w("loadSummary: transcript flow timeout for sessionId=%s, falling back to getFullTranscript", sessionId)
+                transcriptRepository.getFullTranscript(sessionId)
+            }
+
+            Timber.d("loadSummary: obtained transcript for sessionId=%s, length=%d", sessionId, transcript.length)
 
             _uiState.update { it.copy(transcriptText = transcript, userNotes = userNotes) }
             generateSummary(sessionId, transcript, userNotes)
@@ -87,6 +95,7 @@ class SummaryViewModel @Inject constructor(
 
     fun regenerateSummary(sessionId: String) {
         viewModelScope.launch {
+            Timber.d("SummaryViewModel.regenerateSummary(sessionId=%s)", sessionId)
             val transcript = _uiState.value.transcriptText
             val notes = _uiState.value.userNotes
             _uiState.update {
@@ -108,7 +117,14 @@ class SummaryViewModel @Inject constructor(
         transcript: String,
         userNotes: String,
     ) {
+        Timber.d(
+            "generateSummary(sessionId=%s) called, transcriptLength=%d, notesLength=%d",
+            sessionId,
+            transcript.length,
+            userNotes.length,
+        )
         if (transcript.isBlank()) {
+            Timber.w("generateSummary: transcript blank for sessionId=%s", sessionId)
             _uiState.update {
                 it.copy(
                     isLoading = false,
@@ -128,6 +144,7 @@ class SummaryViewModel @Inject constructor(
             }
 
             val rawText = accumulated.toString()
+            Timber.d("generateSummary: received streamed summary for sessionId=%s, length=%d", sessionId, rawText.length)
             val parsed = parseSummaryJson(rawText)
 
             val summary = Summary(

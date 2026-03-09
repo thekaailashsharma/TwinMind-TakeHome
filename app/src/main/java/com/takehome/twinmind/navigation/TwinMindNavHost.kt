@@ -34,12 +34,19 @@ import com.takehome.twinmind.feature.dashboard.PersonalizationScreen
 import com.takehome.twinmind.feature.dashboard.PersonalizationViewModel
 import com.takehome.twinmind.feature.recording.RecordingScreen
 import com.takehome.twinmind.feature.recording.RecordingViewModel
+import com.takehome.twinmind.feature.recording.TranscriptDetailSheet
+import com.takehome.twinmind.feature.recording.TranscriptEntry
 import com.takehome.twinmind.feature.summary.ActionItem
+import com.takehome.twinmind.feature.summary.ActionItemsReviewSheet
+import com.takehome.twinmind.feature.summary.ChatScreen
+import com.takehome.twinmind.feature.summary.ChatViewModel
+import com.takehome.twinmind.feature.summary.SessionDetailScreen
+import com.takehome.twinmind.feature.summary.SessionDetailViewModel
 import com.takehome.twinmind.feature.summary.SummaryBottomSheet
-import com.takehome.twinmind.feature.summary.SummaryViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import timber.log.Timber
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,9 +57,6 @@ fun TwinMindNavHost(
     val startRoute = if (isLoggedIn) DashboardRoute else SignInRoute
     val backStack = rememberNavBackStack(startRoute)
     val context = LocalContext.current
-
-    var showSummarySheet by rememberSaveable { mutableStateOf(false) }
-    var currentSessionId by rememberSaveable { mutableStateOf<String?>(null) }
 
     NavDisplay(
         backStack = backStack,
@@ -143,6 +147,8 @@ fun TwinMindNavHost(
 
                 var audioPermissionGranted by rememberSaveable { mutableStateOf(false) }
                 var permissionDenied by rememberSaveable { mutableStateOf(false) }
+                var showTranscriptSheet by rememberSaveable { mutableStateOf(false) }
+                var hasStartedRecording by rememberSaveable { mutableStateOf(false) }
 
                 val permissionLauncher = rememberLauncherForActivityResult(
                     ActivityResultContracts.RequestMultiplePermissions(),
@@ -163,6 +169,9 @@ fun TwinMindNavHost(
                 }
 
                 LaunchedEffect(Unit) {
+                    recordingViewModel.resetForNewSession()
+                    hasStartedRecording = false
+
                     val hasAudioPerm = ContextCompat.checkSelfPermission(
                         context,
                         Manifest.permission.RECORD_AUDIO,
@@ -182,23 +191,14 @@ fun TwinMindNavHost(
                 }
 
                 LaunchedEffect(audioPermissionGranted) {
-                    if (audioPermissionGranted &&
-                        !uiState.isRecording &&
-                        uiState.sessionId == null
-                    ) {
+                    if (audioPermissionGranted && !hasStartedRecording) {
+                        hasStartedRecording = true
+                        Timber.d("TwinMindNavHost: starting new recording")
                         recordingViewModel.startRecording()
                     }
                 }
 
-                LaunchedEffect(uiState.isReadyForSummary) {
-                    if (uiState.isReadyForSummary) {
-                        currentSessionId = uiState.sessionId
-                        showSummarySheet = true
-                        recordingViewModel.clearReadyForSummary()
-                    }
-                }
-
-                val now = SimpleDateFormat("MMM dd • h:mm a", Locale.getDefault())
+                val now = SimpleDateFormat("MMM dd · h:mm a", Locale.getDefault())
                     .format(Date())
 
                 RecordingScreen(
@@ -207,23 +207,169 @@ fun TwinMindNavHost(
                     transcriptText = uiState.transcriptText,
                     statusText = uiState.statusText,
                     onBackClick = {
-                        if (!uiState.isStopping) {
-                            recordingViewModel.stopRecording()
-                            backStack.removeLastOrNull()
+                        val sessionId = recordingViewModel.stopRecording()
+                        backStack.removeLastOrNull()
+                        if (sessionId != null) {
+                            backStack.add(SessionDetailRoute(sessionId))
                         }
                     },
                     onChatClick = {},
                     onStopClick = {
-                        if (!uiState.isStopping) {
-                            recordingViewModel.stopRecording()
+                        val sessionId = recordingViewModel.stopRecording()
+                        if (sessionId != null) {
+                            backStack.removeLastOrNull()
+                            backStack.add(SessionDetailRoute(sessionId))
                         }
                     },
                     onNotesCardClick = {},
-                    onTranscriptCardClick = {},
+                    onTranscriptCardClick = { showTranscriptSheet = true },
                     isRecording = uiState.isRecording,
                     isPaused = uiState.isPaused,
-                    isStopping = uiState.isStopping,
                     silenceWarning = uiState.silenceWarning,
+                    liveSuggestions = uiState.liveSuggestions,
+                    onRefreshSuggestions = { recordingViewModel.refreshSuggestions() },
+                )
+
+                if (showTranscriptSheet) {
+                    val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+                    val transcriptParts = uiState.transcriptText.split(". ")
+                        .filter { it.isNotBlank() }
+                    val entries = if (transcriptParts.isEmpty()) {
+                        emptyList()
+                    } else {
+                        listOf(
+                            TranscriptEntry(
+                                timestamp = timeFormat.format(Date()),
+                                text = uiState.transcriptText,
+                            ),
+                        )
+                    }
+
+                    TranscriptDetailSheet(
+                        entries = entries,
+                        userNotes = uiState.userNotes,
+                        onDismiss = { showTranscriptSheet = false },
+                        onCopyClick = {
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            val clip = ClipData.newPlainText("Transcript", uiState.transcriptText)
+                            clipboard.setPrimaryClip(clip)
+                            Toast.makeText(context, "Transcript copied", Toast.LENGTH_SHORT).show()
+                        },
+                    )
+                }
+            }
+
+            entry<SessionDetailRoute> { route ->
+                val sessionDetailViewModel: SessionDetailViewModel = hiltViewModel()
+                val state by sessionDetailViewModel.uiState.collectAsStateWithLifecycle()
+
+                var showSummarySheet by rememberSaveable { mutableStateOf(false) }
+                var summarySheetInitialTab by rememberSaveable { mutableStateOf(0) }
+                var showActionItemsSheet by rememberSaveable { mutableStateOf(false) }
+
+                LaunchedEffect(route.sessionId) {
+                    sessionDetailViewModel.loadSession(route.sessionId)
+                }
+
+                SessionDetailScreen(
+                    state = state,
+                    onBackClick = {
+                        backStack.removeLastOrNull()
+                    },
+                    onSummaryCardClick = {
+                        summarySheetInitialTab = 0
+                        showSummarySheet = true
+                    },
+                    onTranscriptCardClick = {
+                        summarySheetInitialTab = 2
+                        showSummarySheet = true
+                    },
+                    onTasksCardClick = {
+                        showActionItemsSheet = true
+                    },
+                    onChatClick = {
+                        backStack.add(ChatRoute(route.sessionId))
+                    },
+                    onMoreClick = {},
+                    onChatHistoryClick = {
+                        backStack.add(ChatRoute(route.sessionId))
+                    },
+                )
+
+                if (showSummarySheet) {
+                    SummaryBottomSheet(
+                        summaryText = state.summaryText,
+                        keyPoints = state.keyPoints,
+                        notesText = state.userNotes,
+                        transcriptSegments = state.transcriptSegments,
+                        actionItems = state.actionItems.map { ActionItem(it) },
+                        isLoading = state.isGeneratingSummary,
+                        initialTab = summarySheetInitialTab,
+                        onDismiss = { showSummarySheet = false },
+                        onShareClick = {
+                            val shareText = buildString {
+                                if (state.summaryTitle.isNotBlank()) {
+                                    appendLine(state.summaryTitle)
+                                    appendLine()
+                                }
+                                appendLine(state.summaryText)
+                                if (state.actionItems.isNotEmpty()) {
+                                    appendLine()
+                                    appendLine("Action Items:")
+                                    state.actionItems.forEach { appendLine("- $it") }
+                                }
+                            }
+                            val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                                putExtra(Intent.EXTRA_TEXT, shareText)
+                                type = "text/plain"
+                            }
+                            context.startActivity(Intent.createChooser(sendIntent, "Share Summary"))
+                        },
+                        onCopyClick = {
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            val clip = ClipData.newPlainText("Summary", state.summaryText)
+                            clipboard.setPrimaryClip(clip)
+                            Toast.makeText(context, "Summary copied", Toast.LENGTH_SHORT).show()
+                        },
+                        onRegenerateClick = {
+                            sessionDetailViewModel.regenerateSummary()
+                        },
+                        onEditClick = {},
+                        onShareWithAttendeesClick = {},
+                        onCopyTranscript = {
+                            val transcript = state.transcriptSegments.joinToString("\n") { it.text }
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            val clip = ClipData.newPlainText("Transcript", transcript)
+                            clipboard.setPrimaryClip(clip)
+                            Toast.makeText(context, "Transcript copied", Toast.LENGTH_SHORT).show()
+                        },
+                        onSplitTranscript = {},
+                    )
+                }
+
+                if (showActionItemsSheet) {
+                    ActionItemsReviewSheet(
+                        actionItems = state.actionItems,
+                        onDismiss = { showActionItemsSheet = false },
+                        onClearAll = { showActionItemsSheet = false },
+                    )
+                }
+            }
+
+            entry<ChatRoute> { route ->
+                val chatViewModel: ChatViewModel = hiltViewModel()
+                val chatState by chatViewModel.uiState.collectAsStateWithLifecycle()
+
+                LaunchedEffect(route.sessionId) {
+                    chatViewModel.loadSession(route.sessionId)
+                }
+
+                ChatScreen(
+                    state = chatState,
+                    onBackClick = { backStack.removeLastOrNull() },
+                    onSendMessage = { chatViewModel.sendMessage(it) },
+                    onModelSelected = { chatViewModel.setModel(it) },
+                    onToggleMemories = { chatViewModel.toggleMemories() },
                 )
             }
 
@@ -240,57 +386,4 @@ fun TwinMindNavHost(
             }
         },
     )
-
-    if (showSummarySheet && currentSessionId != null) {
-        val summaryViewModel: SummaryViewModel = hiltViewModel()
-        val summaryState by summaryViewModel.uiState.collectAsStateWithLifecycle()
-
-        LaunchedEffect(currentSessionId) {
-            currentSessionId?.let { summaryViewModel.loadSummary(it) }
-        }
-
-        SummaryBottomSheet(
-            summaryText = summaryState.summaryText.ifBlank { summaryState.streamedText },
-            notesText = summaryState.userNotes,
-            transcriptText = summaryState.transcriptText,
-            transcriptTime = "00:00",
-            actionItems = summaryState.actionItems.map { ActionItem(it) },
-            isLoading = summaryState.isLoading || summaryState.isStreaming,
-            onDismiss = {
-                showSummarySheet = false
-                currentSessionId = null
-            },
-            onShareClick = {
-                val shareText = buildString {
-                    if (summaryState.summaryTitle.isNotBlank()) {
-                        appendLine(summaryState.summaryTitle)
-                        appendLine()
-                    }
-                    appendLine(summaryState.summaryText)
-                    if (summaryState.actionItems.isNotEmpty()) {
-                        appendLine()
-                        appendLine("Action Items:")
-                        summaryState.actionItems.forEach { appendLine("- $it") }
-                    }
-                }
-                val sendIntent = Intent(Intent.ACTION_SEND).apply {
-                    putExtra(Intent.EXTRA_TEXT, shareText)
-                    type = "text/plain"
-                }
-                context.startActivity(Intent.createChooser(sendIntent, "Share Summary"))
-            },
-            onCopyClick = {
-                val clipboard =
-                    context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                val clip = ClipData.newPlainText("Summary", summaryState.summaryText)
-                clipboard.setPrimaryClip(clip)
-                Toast.makeText(context, "Summary copied", Toast.LENGTH_SHORT).show()
-            },
-            onRegenerateClick = {
-                currentSessionId?.let { summaryViewModel.regenerateSummary(it) }
-            },
-            onEditClick = {},
-            onShareWithAttendeesClick = {},
-        )
-    }
 }

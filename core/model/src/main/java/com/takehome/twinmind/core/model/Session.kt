@@ -73,3 +73,14 @@ data class Summary(
     val rawResponse: String? = null,
     val errorMessage: String? = null,
 )
+
+data class ChatMessage(
+    val id: String = UUID.randomUUID().toString(),
+    val sessionId: String,
+    val role: String,
+    val content: String,
+    val thinkingSummary: String? = null,
+    val thinkingDurationMs: Long = 0,
+    val modelName: String? = null,
+    val createdAt: Long = System.currentTimeMillis(),
+)

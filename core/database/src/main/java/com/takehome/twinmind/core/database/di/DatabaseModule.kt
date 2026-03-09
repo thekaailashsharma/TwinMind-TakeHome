@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.takehome.twinmind.core.database.TwinMindDatabase
 import com.takehome.twinmind.core.database.dao.AudioChunkDao
+import com.takehome.twinmind.core.database.dao.ChatMessageDao
 import com.takehome.twinmind.core.database.dao.SessionDao
 import com.takehome.twinmind.core.database.dao.SummaryDao
 import com.takehome.twinmind.core.database.dao.TranscriptDao
@@ -25,7 +26,9 @@ object DatabaseModule {
             context,
             TwinMindDatabase::class.java,
             "twinmind.db",
-        ).build()
+        )
+            .addMigrations(TwinMindDatabase.MIGRATION_1_2)
+            .build()
 
     @Provides
     fun provideSessionDao(db: TwinMindDatabase): SessionDao = db.sessionDao()
@@ -38,4 +41,7 @@ object DatabaseModule {
 
     @Provides
     fun provideSummaryDao(db: TwinMindDatabase): SummaryDao = db.summaryDao()
+
+    @Provides
+    fun provideChatMessageDao(db: TwinMindDatabase): ChatMessageDao = db.chatMessageDao()
 }

@@ -17,3 +17,9 @@ data object RecordingRoute : NavKey
 
 @Serializable
 data object PersonalizationRoute : NavKey
+
+@Serializable
+data class SessionDetailRoute(val sessionId: String) : NavKey
+
+@Serializable
+data class ChatRoute(val sessionId: String) : NavKey

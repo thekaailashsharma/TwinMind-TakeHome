@@ -10,6 +10,7 @@ import com.takehome.twinmind.core.model.Session
 import com.takehome.twinmind.core.model.SessionStatus
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -45,6 +46,13 @@ class SessionRepository @Inject constructor(
     }
 
     suspend fun saveAudioChunk(chunk: AudioChunk) {
+        Timber.d(
+            "SessionRepository.saveAudioChunk: id=%s sessionId=%s index=%d status=%s",
+            chunk.id,
+            chunk.sessionId,
+            chunk.chunkIndex,
+            chunk.status,
+        )
         audioChunkDao.upsert(chunk.toEntity())
     }
 
@@ -54,9 +62,23 @@ class SessionRepository @Inject constructor(
 
     fun observeChunksBySession(sessionId: String): Flow<List<AudioChunk>> =
         audioChunkDao.observeBySession(sessionId)
-            .map { list -> list.map { it.toDomain() } }
+            .map { list ->
+                val domains = list.map { it.toDomain() }
+                Timber.d(
+                    "SessionRepository.observeChunksBySession emission: sessionId=%s size=%d statuses=%s",
+                    sessionId,
+                    domains.size,
+                    domains.joinToString { "${it.chunkIndex}:${it.status}" },
+                )
+                domains
+            }
 
     suspend fun updateChunkStatus(chunkId: String, status: ChunkStatus) {
+        Timber.d(
+            "SessionRepository.updateChunkStatus: chunkId=%s status=%s",
+            chunkId,
+            status,
+        )
         audioChunkDao.updateStatus(chunkId, status.name)
     }
 }

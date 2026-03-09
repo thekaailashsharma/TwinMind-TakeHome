@@ -1,10 +1,12 @@
 package com.takehome.twinmind.core.database.mapper
 
 import com.takehome.twinmind.core.database.entity.AudioChunkEntity
+import com.takehome.twinmind.core.database.entity.ChatMessageEntity
 import com.takehome.twinmind.core.database.entity.SessionEntity
 import com.takehome.twinmind.core.database.entity.SummaryEntity
 import com.takehome.twinmind.core.database.entity.TranscriptSegmentEntity
 import com.takehome.twinmind.core.model.AudioChunk
+import com.takehome.twinmind.core.model.ChatMessage
 import com.takehome.twinmind.core.model.ChunkStatus
 import com.takehome.twinmind.core.model.RecordingPauseReason
 import com.takehome.twinmind.core.model.Session
@@ -103,4 +105,26 @@ fun Summary.toEntity(): SummaryEntity = SummaryEntity(
     status = status.name,
     rawResponse = rawResponse,
     errorMessage = errorMessage,
+)
+
+fun ChatMessageEntity.toDomain(): ChatMessage = ChatMessage(
+    id = id,
+    sessionId = sessionId,
+    role = role,
+    content = content,
+    thinkingSummary = thinkingSummary,
+    thinkingDurationMs = thinkingDurationMs,
+    modelName = modelName,
+    createdAt = createdAt,
+)
+
+fun ChatMessage.toEntity(): ChatMessageEntity = ChatMessageEntity(
+    id = id,
+    sessionId = sessionId,
+    role = role,
+    content = content,
+    thinkingSummary = thinkingSummary,
+    thinkingDurationMs = thinkingDurationMs,
+    modelName = modelName,
+    createdAt = createdAt,
 )

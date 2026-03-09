@@ -205,7 +205,7 @@ class AudioRecorder @Inject constructor(
 
     companion object {
         private const val BUFFER_SIZE = 4096
-        const val CHUNK_DURATION_MS = 30_000L
+        const val CHUNK_DURATION_MS = 15_000L
         private const val OVERLAP_MS = 2_000L
         private val OVERLAP_BYTES =
             (WavWriter.SAMPLE_RATE * WavWriter.CHANNELS * (WavWriter.BITS_PER_SAMPLE / 8) * OVERLAP_MS / 1000).toInt()
