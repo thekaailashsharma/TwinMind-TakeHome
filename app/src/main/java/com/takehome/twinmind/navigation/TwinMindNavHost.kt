@@ -64,7 +64,7 @@ fun TwinMindNavHost(
     NavDisplay(
         backStack = backStack,
         modifier = modifier,
-        onBack = { backStack.removeLastOrNull() },
+        onBack = { if (backStack.size > 1) backStack.removeLastOrNull() },
         entryProvider = entryProvider {
 
             entry<SignInRoute> {
@@ -229,8 +229,6 @@ fun TwinMindNavHost(
                     isRecording = uiState.isRecording,
                     isPaused = uiState.isPaused,
                     silenceWarning = uiState.silenceWarning,
-                    liveSuggestions = uiState.liveSuggestions,
-                    onRefreshSuggestions = { recordingViewModel.refreshSuggestions() },
                 )
 
                 if (showTranscriptSheet) {

@@ -20,14 +20,28 @@ class CloudSyncRepository @Inject constructor(
 ) {
     private fun userDoc() = auth.currentUser?.uid?.let { firestore.collection("users").document(it) }
 
-    suspend fun syncSession(sessionId: String) {
+    /**
+     * @param transcriptOverride When non-null, use this text instead of re-querying Room.
+     *        Useful when the caller already has the transcript in memory.
+     */
+    suspend fun syncSession(sessionId: String, transcriptOverride: String? = null) {
         val user = auth.currentUser ?: return
         val userRef = userDoc() ?: return
         val session = sessionRepository.getById(sessionId) ?: return
 
-        val transcript = transcriptRepository.getFullTranscript(sessionId)
+        val transcript = transcriptOverride
+            ?: transcriptRepository.getFullTranscript(sessionId)
         val summary = summaryRepository.getBySession(sessionId)
         val chats = chatRepository.getBySession(sessionId)
+
+        Timber.tag("TM_TRANSCRIPT")
+            .d(
+                "CloudSyncRepository.syncSession id=%s transcriptLen=%d summaryStatus=%s title=%s",
+                sessionId,
+                transcript.length,
+                summary?.status?.name,
+                session.title,
+            )
 
         try {
             userRef.set(
@@ -40,33 +54,39 @@ class CloudSyncRepository @Inject constructor(
                 SetOptions.merge(),
             ).await()
 
-            val sessionRef = userRef.collection("sessions").document(sessionId)
-            sessionRef.set(
-                mapOf(
-                    "sessionId" to session.id,
-                    "title" to session.title,
-                    "startedAt" to session.startedAt,
-                    "endedAt" to session.endedAt,
-                    "status" to session.status.name,
-                    "notes" to session.notes,
-                    "locationName" to session.locationName,
-                    "latitude" to session.latitude,
-                    "longitude" to session.longitude,
-                    "transcript" to transcript.takeIf { it.isNotBlank() },
-                    "summaryTitle" to summary?.title,
-                    "summaryText" to summary?.summaryText,
-                    "keyPoints" to summary?.keyPoints,
-                    "actionItems" to summary?.actionItems,
-                    "summaryStatus" to summary?.status?.name,
-                    "updatedAt" to System.currentTimeMillis(),
-                ),
-                SetOptions.merge(),
-            ).await()
+            val data = mutableMapOf<String, Any?>(
+                "sessionId" to session.id,
+                "startedAt" to session.startedAt,
+                "endedAt" to session.endedAt,
+                "status" to session.status.name,
+                "updatedAt" to System.currentTimeMillis(),
+            )
+            session.title?.let { data["title"] = it }
+            session.notes?.let { data["notes"] = it }
+            session.locationName?.let { data["locationName"] = it }
+            session.latitude?.let { data["latitude"] = it }
+            session.longitude?.let { data["longitude"] = it }
+            if (transcript.isNotBlank()) data["transcript"] = transcript
+            if (summary != null) {
+                summary.title?.let { data["summaryTitle"] = it }
+                summary.summaryText?.let { data["summaryText"] = it }
+                summary.keyPoints?.let { data["keyPoints"] = it }
+                summary.actionItems?.let { data["actionItems"] = it }
+                data["summaryStatus"] = summary.status.name
+            }
 
-            // Chat messages stored as subcollection for size safety.
-            syncChatMessagesInternal(userRef.collection("sessions").document(sessionId), chats)
+            val sessionRef = userRef.collection("sessions").document(sessionId)
+            sessionRef.set(data, SetOptions.merge()).await()
+            Timber.tag("TM_TRANSCRIPT").d(
+                "CloudSyncRepository.syncSession wrote to Firestore sessionId=%s hasTranscript=%s hasSummaryText=%s",
+                sessionId,
+                data.containsKey("transcript"),
+                data.containsKey("summaryText"),
+            )
+
+            syncChatMessagesInternal(sessionRef, chats)
         } catch (e: Exception) {
-            Timber.w(e, "Cloud sync failed for sessionId=%s", sessionId)
+            Timber.tag("TM_TRANSCRIPT").w(e, "Cloud sync failed for sessionId=%s", sessionId)
         }
     }
 

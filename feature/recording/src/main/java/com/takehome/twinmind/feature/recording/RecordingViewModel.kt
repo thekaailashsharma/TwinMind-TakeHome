@@ -7,8 +7,8 @@ import androidx.lifecycle.viewModelScope
 import com.takehome.twinmind.core.audio.AudioRecorder
 import com.takehome.twinmind.core.audio.RecordingService
 import com.takehome.twinmind.core.audio.RecordingStateHolder
-import com.takehome.twinmind.core.data.ai.GeminiService
 import com.takehome.twinmind.core.data.ai.TranscriptionWorker
+import com.takehome.twinmind.core.data.repository.AuthRepository
 import com.takehome.twinmind.core.data.repository.SessionRepository
 import com.takehome.twinmind.core.data.repository.TranscriptRepository
 import com.takehome.twinmind.core.model.AudioChunk
@@ -17,12 +17,10 @@ import com.takehome.twinmind.core.model.SessionStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -42,7 +40,6 @@ data class RecordingUiState(
     val userNotes: String = "",
     val silenceWarning: Boolean = false,
     val statusText: String = "Recording...",
-    val liveSuggestions: List<LiveSuggestionUi> = emptyList(),
 )
 
 @HiltViewModel
@@ -52,12 +49,11 @@ class RecordingViewModel @Inject constructor(
     private val transcriptRepository: TranscriptRepository,
     private val audioRecorder: AudioRecorder,
     private val stateHolder: RecordingStateHolder,
-    private val geminiService: GeminiService,
+    private val authRepository: AuthRepository,
 ) : ViewModel() {
 
     private val _sessionId = MutableStateFlow<String?>(null)
     private val _userNotes = MutableStateFlow("")
-    private val _liveSuggestions = MutableStateFlow<List<LiveSuggestionUi>>(emptyList())
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private val _transcriptText: StateFlow<String> = _sessionId
@@ -71,49 +67,11 @@ class RecordingViewModel @Inject constructor(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "")
 
-    init {
-        observeTranscriptForSuggestions()
-    }
-
-    @OptIn(FlowPreview::class)
-    private fun observeTranscriptForSuggestions() {
-        viewModelScope.launch {
-            _transcriptText
-                .debounce(10_000)
-                .collect { transcript ->
-                    if (transcript.isNotBlank() && transcript.length > 20) {
-                        fetchLiveSuggestions(transcript)
-                    }
-                }
-        }
-    }
-
-    private suspend fun fetchLiveSuggestions(transcript: String) {
-        geminiService.generateLiveSuggestions(transcript)
-            .onSuccess { suggestions ->
-                _liveSuggestions.value = suggestions.map {
-                    LiveSuggestionUi(emoji = it.emoji, text = it.text)
-                }
-                Timber.d("Live suggestions updated: %d items", suggestions.size)
-            }
-            .onFailure {
-                Timber.w(it, "Failed to fetch live suggestions")
-            }
-    }
-
-    fun refreshSuggestions() {
-        val transcript = _transcriptText.value
-        if (transcript.isNotBlank()) {
-            viewModelScope.launch { fetchLiveSuggestions(transcript) }
-        }
-    }
-
     val uiState: StateFlow<RecordingUiState> = combine(
         stateHolder.state,
         _transcriptText,
         _userNotes,
-        _liveSuggestions,
-    ) { recState, transcriptText, notes, suggestions ->
+    ) { recState, transcriptText, notes ->
         RecordingUiState(
             sessionId = recState.sessionId ?: _sessionId.value,
             isRecording = recState.isRecording,
@@ -129,7 +87,6 @@ class RecordingViewModel @Inject constructor(
                 recState.isRecording -> "I'm listening and taking notes..."
                 else -> "Ready"
             },
-            liveSuggestions = suggestions,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -140,7 +97,6 @@ class RecordingViewModel @Inject constructor(
     fun resetForNewSession() {
         _sessionId.value = null
         _userNotes.value = ""
-        _liveSuggestions.value = emptyList()
         stateHolder.reset()
         Timber.d("RecordingViewModel.resetForNewSession() - state cleared")
     }
@@ -167,7 +123,7 @@ class RecordingViewModel @Inject constructor(
             }
 
             Timber.d("RecordingViewModel.startRecording() - creating new session")
-            val session = Session()
+            val session = Session(userId = authRepository.uid)
             sessionRepository.create(session)
             _sessionId.value = session.id
             Timber.d("Created new session id=%s", session.id)

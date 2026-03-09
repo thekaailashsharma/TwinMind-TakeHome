@@ -6,6 +6,7 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "sessions")
 data class SessionEntity(
     @PrimaryKey val id: String,
+    val userId: String?,
     val title: String?,
     val startedAt: Long,
     val endedAt: Long?,

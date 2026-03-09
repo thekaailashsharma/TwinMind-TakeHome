@@ -20,16 +20,18 @@ class TranscriptRepository @Inject constructor(
 
     suspend fun saveSegments(segments: List<TranscriptSegment>) {
         if (segments.isEmpty()) {
-            Timber.w("TranscriptRepository.saveSegments called with empty list")
+            Timber.tag("TM_TRANSCRIPT").w("TranscriptRepository.saveSegments called with empty list")
             return
         }
         val sessionId = segments.first().sessionId
-        Timber.d(
-            "TranscriptRepository.saveSegments: sessionId=%s count=%d chunkIds=%s",
-            sessionId,
-            segments.size,
-            segments.joinToString { it.chunkId },
-        )
+        Timber.tag("TM_TRANSCRIPT")
+            .d(
+                "TranscriptRepository.saveSegments sessionId=%s count=%d chunkIds=%s previews=%s",
+                sessionId,
+                segments.size,
+                segments.joinToString { it.chunkId },
+                segments.joinToString { it.text.take(40).replace("\n", " ") },
+            )
         transcriptDao.insertAll(segments.map { it.toEntity() })
     }
 
@@ -37,11 +39,13 @@ class TranscriptRepository @Inject constructor(
         transcriptDao.getFullTranscript(sessionId)
             .orEmpty()
             .also { full ->
-                Timber.d(
-                    "TranscriptRepository.getFullTranscript: sessionId=%s length=%d",
-                    sessionId,
-                    full.length,
-                )
+                Timber.tag("TM_TRANSCRIPT")
+                    .d(
+                        "TranscriptRepository.getFullTranscript sessionId=%s length=%d preview=\"%s\"",
+                        sessionId,
+                        full.length,
+                        full.take(80).replace("\n", " "),
+                    )
             }
 
     suspend fun deleteBySession(sessionId: String) {

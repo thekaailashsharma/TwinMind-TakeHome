@@ -61,11 +61,25 @@ class SessionDetailViewModel @Inject constructor(
 
     private var notesSaveJob: Job? = null
     private var didCloudSyncForSession: Boolean = false
+    private var loadedSessionId: String? = null
+    private var generateJob: Job? = null
 
     fun loadSession(sessionId: String) {
-        viewModelScope.launch {
-            Timber.d("SessionDetailViewModel.loadSession(%s)", sessionId)
-            _uiState.update { it.copy(sessionId = sessionId) }
+        if (loadedSessionId == sessionId) {
+            Timber.tag("TM_TRANSCRIPT")
+                .d("SessionDetailViewModel.loadSession(%s) - already loaded, refreshing chat", sessionId)
+            refreshChatHistory()
+            return
+        }
+        loadedSessionId = sessionId
+        generateJob?.cancel()
+        generateJob = viewModelScope.launch {
+            Timber.tag("TM_TRANSCRIPT").d("SessionDetailViewModel.loadSession(%s)", sessionId)
+            _uiState.value = SessionDetailUiState(
+                sessionId = sessionId,
+                isGeneratingSummary = true,
+                title = "Generating summary...",
+            )
             didCloudSyncForSession = false
 
             val session = sessionRepository.getById(sessionId)
@@ -93,6 +107,11 @@ class SessionDetailViewModel @Inject constructor(
     }
 
     private suspend fun loadCompletedSummary(sessionId: String, summary: Summary) {
+        Timber.tag("TM_TRANSCRIPT").d(
+            "loadCompletedSummary sessionId=%s status=%s",
+            sessionId,
+            summary.status,
+        )
         val segments = transcriptRepository.observeBySession(sessionId).first()
         val duration = computeDuration(segments)
         val chatPreviews = chatRepository.getUserMessagePreviews(sessionId)
@@ -110,6 +129,11 @@ class SessionDetailViewModel @Inject constructor(
                 transcriptPreview = buildTranscriptPreview(segments),
                 chatHistory = chatPreviews,
             )
+        }
+
+        if (!didCloudSyncForSession) {
+            didCloudSyncForSession = true
+            cloudSyncRepository.syncSession(sessionId)
         }
     }
 
@@ -141,6 +165,12 @@ class SessionDetailViewModel @Inject constructor(
     private suspend fun observeTranscriptsAndGenerate(sessionId: String) {
         viewModelScope.launch {
             transcriptRepository.observeBySession(sessionId).collect { segments ->
+                Timber.tag("TM_TRANSCRIPT").d(
+                    "observeTranscriptsAndGenerate sessionId=%s segmentsCount=%d firstPreview=\"%s\"",
+                    sessionId,
+                    segments.size,
+                    segments.firstOrNull()?.text?.take(80)?.replace("\n", " ") ?: "",
+                )
                 val preview = buildTranscriptPreview(segments)
                 val duration = computeDuration(segments)
                 _uiState.update {
@@ -152,6 +182,10 @@ class SessionDetailViewModel @Inject constructor(
                 }
 
                 if (!didCloudSyncForSession && segments.isNotEmpty()) {
+                    Timber.tag("TM_TRANSCRIPT").d(
+                        "observeTranscriptsAndGenerate triggering initial cloud sync for sessionId=%s",
+                        sessionId,
+                    )
                     didCloudSyncForSession = true
                     cloudSyncRepository.syncSession(sessionId)
                 }
@@ -179,6 +213,12 @@ class SessionDetailViewModel @Inject constructor(
                 .joinToString(" ") { it.text }
         } ?: transcriptRepository.getFullTranscript(sessionId)
 
+        Timber.tag("TM_TRANSCRIPT").d(
+            "observeTranscriptsAndGenerate built transcript for sessionId=%s length=%d",
+            sessionId,
+            transcript.length,
+        )
+
         if (transcript.isBlank()) {
             _uiState.update {
                 it.copy(
@@ -194,7 +234,8 @@ class SessionDetailViewModel @Inject constructor(
     }
 
     private suspend fun generateSummary(sessionId: String, transcript: String) {
-        Timber.d("generateSummary for session %s, transcriptLength=%d", sessionId, transcript.length)
+        Timber.tag("TM_TRANSCRIPT")
+            .d("generateSummary sessionId=%s transcriptLength=%d", sessionId, transcript.length)
         _uiState.update { it.copy(isGeneratingSummary = true) }
 
         val accumulated = StringBuilder()
@@ -219,7 +260,6 @@ class SessionDetailViewModel @Inject constructor(
             )
             summaryRepository.save(summary)
 
-            // Persist the generated heading/title to the Session (used by Memories list + Firestore sync).
             val session = sessionRepository.getById(sessionId)
             if (session != null) {
                 sessionRepository.update(session.copy(title = parsed.title.takeIf { it.isNotBlank() } ?: session.title))
@@ -236,7 +276,7 @@ class SessionDetailViewModel @Inject constructor(
                 )
             }
 
-            cloudSyncRepository.syncSession(sessionId)
+            cloudSyncRepository.syncSession(sessionId, transcriptOverride = transcript)
         } catch (e: Exception) {
             Timber.e(e, "Summary generation failed for session %s", sessionId)
             summaryRepository.save(

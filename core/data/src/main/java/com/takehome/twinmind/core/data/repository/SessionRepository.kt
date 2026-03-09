@@ -22,6 +22,9 @@ class SessionRepository @Inject constructor(
     fun observeAll(): Flow<List<Session>> =
         sessionDao.observeAll().map { list -> list.map { it.toDomain() } }
 
+    fun observeByUser(userId: String): Flow<List<Session>> =
+        sessionDao.observeByUser(userId).map { list -> list.map { it.toDomain() } }
+
     fun observeById(id: String): Flow<Session?> =
         sessionDao.observeById(id).map { it?.toDomain() }
 
@@ -33,12 +36,12 @@ class SessionRepository @Inject constructor(
         sessionDao.getById(id)?.toDomain()
 
     suspend fun create(session: Session): Session {
-        sessionDao.upsert(session.toEntity())
+        sessionDao.insert(session.toEntity())
         return session
     }
 
     suspend fun update(session: Session) {
-        sessionDao.upsert(session.toEntity())
+        sessionDao.update(session.toEntity())
     }
 
     suspend fun delete(id: String) {

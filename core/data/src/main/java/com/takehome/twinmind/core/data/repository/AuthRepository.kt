@@ -30,7 +30,17 @@ class AuthRepository @Inject constructor(
         awaitClose { firebaseAuth.removeAuthStateListener(listener) }
     }
 
+    val currentUserId: Flow<String?> = callbackFlow {
+        val listener = FirebaseAuth.AuthStateListener { auth ->
+            trySend(auth.currentUser?.uid)
+        }
+        firebaseAuth.addAuthStateListener(listener)
+        awaitClose { firebaseAuth.removeAuthStateListener(listener) }
+    }
+
     val isSignedIn: Boolean get() = firebaseAuth.currentUser != null
+
+    val uid: String? get() = firebaseAuth.currentUser?.uid
 
     val user: FirebaseUser? get() = firebaseAuth.currentUser
 

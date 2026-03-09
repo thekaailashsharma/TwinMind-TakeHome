@@ -10,6 +10,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -29,9 +31,12 @@ class DashboardViewModel @Inject constructor(
     private val userPrefsRepository: UserPrefsRepository,
 ) : ViewModel() {
 
+    @Suppress("OPT_IN_USAGE")
     val uiState: StateFlow<DashboardUiState> = combine(
         userPrefsRepository.userName,
-        sessionRepository.observeAll(),
+        authRepository.currentUserId.flatMapLatest { uid ->
+            if (uid != null) sessionRepository.observeByUser(uid) else flowOf(emptyList())
+        },
     ) { name, sessions ->
         DashboardUiState(
             userName = name.ifBlank {

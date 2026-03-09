@@ -27,7 +27,7 @@ object DatabaseModule {
             TwinMindDatabase::class.java,
             "twinmind.db",
         )
-            .addMigrations(TwinMindDatabase.MIGRATION_1_2)
+            .addMigrations(TwinMindDatabase.MIGRATION_1_2, TwinMindDatabase.MIGRATION_2_3)
             .build()
 
     @Provides

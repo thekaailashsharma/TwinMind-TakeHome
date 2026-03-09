@@ -89,7 +89,6 @@ dependencies {
     // Firebase
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
-    implementation(libs.firebase.ai)
 
     // WorkManager
     implementation(libs.androidx.work.runtime.ktx)

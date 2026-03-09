@@ -19,9 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -45,11 +43,6 @@ import com.takehome.twinmind.core.designsystem.theme.TwinMindDarkNavy
 import com.takehome.twinmind.core.designsystem.theme.TwinMindGray
 import com.takehome.twinmind.core.designsystem.theme.TwinMindTeal
 
-data class LiveSuggestionUi(
-    val emoji: String,
-    val text: String,
-)
-
 @Composable
 fun RecordingScreen(
     elapsedTime: String,
@@ -65,8 +58,6 @@ fun RecordingScreen(
     isRecording: Boolean = true,
     isPaused: Boolean = false,
     silenceWarning: Boolean = false,
-    liveSuggestions: List<LiveSuggestionUi> = emptyList(),
-    onRefreshSuggestions: () -> Unit = {},
 ) {
     var userNotes by rememberSaveable { mutableStateOf("") }
 
@@ -255,76 +246,6 @@ fun RecordingScreen(
                         color = if (transcriptText.isEmpty()) TwinMindTeal else TwinMindDarkNavy,
                         lineHeight = 20.sp,
                     )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Live Suggestions card
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                border = BorderStroke(1.dp, Color(0xFFE8E8E8)),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = "Live Suggestions",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = TwinMindDarkNavy,
-                            modifier = Modifier.weight(1f),
-                        )
-                        IconButton(
-                            onClick = onRefreshSuggestions,
-                            modifier = Modifier.size(28.dp),
-                        ) {
-                            Icon(
-                                imageVector = TmIcons.Refresh,
-                                contentDescription = "Refresh suggestions",
-                                tint = TwinMindGray,
-                                modifier = Modifier.size(20.dp),
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    if (liveSuggestions.isEmpty()) {
-                        Text(
-                            text = "Suggestions will appear as you speak...",
-                            fontSize = 14.sp,
-                            color = TwinMindGray,
-                        )
-                    } else {
-                        liveSuggestions.forEachIndexed { index, suggestion ->
-                            if (index > 0) {
-                                HorizontalDivider(
-                                    modifier = Modifier.padding(vertical = 10.dp),
-                                    color = Color(0xFFF0F0F0),
-                                )
-                            }
-                            Row(
-                                verticalAlignment = Alignment.Top,
-                            ) {
-                                Text(
-                                    text = suggestion.emoji,
-                                    fontSize = 20.sp,
-                                    modifier = Modifier.padding(end = 12.dp),
-                                )
-                                Text(
-                                    text = suggestion.text,
-                                    fontSize = 14.sp,
-                                    color = TwinMindDarkNavy,
-                                    lineHeight = 20.sp,
-                                )
-                            }
-                        }
-                    }
                 }
             }
 

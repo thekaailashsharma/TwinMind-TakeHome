@@ -48,7 +48,7 @@ class SummaryViewModel @Inject constructor(
 
     fun loadSummary(sessionId: String, userNotes: String = "") {
         viewModelScope.launch {
-            Timber.d("SummaryViewModel.loadSummary(sessionId=%s)", sessionId)
+            Timber.tag("TM_TRANSCRIPT").d("SummaryViewModel.loadSummary(sessionId=%s)", sessionId)
             _uiState.update { it.copy(isLoading = true, error = null) }
 
             val existing = summaryRepository.getBySession(sessionId)
@@ -75,18 +75,24 @@ class SummaryViewModel @Inject constructor(
                 return@launch
             }
 
-            Timber.d("loadSummary: no completed summary, waiting for transcript for sessionId=%s", sessionId)
+            Timber.tag("TM_TRANSCRIPT").d("loadSummary: no completed summary, waiting for transcript for sessionId=%s", sessionId)
             val transcript = withTimeoutOrNull(30_000) {
                 transcriptRepository.observeBySession(sessionId)
                     .map { segments -> segments.joinToString(" ") { it.text } }
                     .filter { it.isNotBlank() }
                     .first()
             } ?: run {
-                Timber.w("loadSummary: transcript flow timeout for sessionId=%s, falling back to getFullTranscript", sessionId)
+                Timber.tag("TM_TRANSCRIPT").w("loadSummary: transcript flow timeout for sessionId=%s, falling back to getFullTranscript", sessionId)
                 transcriptRepository.getFullTranscript(sessionId)
             }
 
-            Timber.d("loadSummary: obtained transcript for sessionId=%s, length=%d", sessionId, transcript.length)
+            Timber.tag("TM_TRANSCRIPT")
+                .d(
+                    "loadSummary: obtained transcript for sessionId=%s, length=%d preview=\"%s\"",
+                    sessionId,
+                    transcript.length,
+                    transcript.take(80).replace("\n", " "),
+                )
 
             _uiState.update { it.copy(transcriptText = transcript, userNotes = userNotes) }
             generateSummary(sessionId, transcript, userNotes)

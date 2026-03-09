@@ -13,6 +13,7 @@ import com.takehome.twinmind.core.model.ChunkStatus
 import com.takehome.twinmind.core.model.TranscriptSegment
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
+import kotlinx.coroutines.delay
 import timber.log.Timber
 import java.io.File
 
@@ -31,19 +32,30 @@ class TranscriptionWorker @AssistedInject constructor(
         val filePath = inputData.getString(KEY_FILE_PATH) ?: return Result.failure()
         val chunkIndex = inputData.getInt(KEY_CHUNK_INDEX, 0)
 
-        Timber.d("Transcribing chunk $chunkIndex for session $sessionId")
+        Timber.tag("TM_TRANSCRIPT").d(
+            "TranscriptionWorker.doWork start chunkIndex=%d sessionId=%s filePath=%s",
+            chunkIndex,
+            sessionId,
+            filePath,
+        )
 
         sessionRepository.updateChunkStatus(chunkId, ChunkStatus.TRANSCRIBING)
 
         val file = File(filePath)
         if (!file.exists()) {
-            Timber.e("Audio file not found: $filePath")
+            Timber.tag("TM_TRANSCRIPT").e("Audio file not found: %s", filePath)
             sessionRepository.updateChunkStatus(chunkId, ChunkStatus.FAILED)
             return Result.failure()
         }
 
         return geminiService.transcribeAudio(file).fold(
             onSuccess = { text ->
+                Timber.tag("TM_TRANSCRIPT").d(
+                    "TranscriptionWorker.onSuccess chunkIndex=%d sessionId=%s textLength=%d",
+                    chunkIndex,
+                    sessionId,
+                    text.length,
+                )
                 if (text.isNotBlank()) {
                     val segment = TranscriptSegment(
                         sessionId = sessionId,
@@ -52,16 +64,40 @@ class TranscriptionWorker @AssistedInject constructor(
                         text = text,
                         timestampMs = System.currentTimeMillis(),
                     )
+                    Timber.tag("TM_TRANSCRIPT").d(
+                        "Saving TranscriptSegment sessionId=%s chunkId=%s index=%d preview=\"%s\"",
+                        sessionId,
+                        chunkId,
+                        chunkIndex,
+                        text.take(80),
+                    )
                     transcriptRepository.saveSegments(listOf(segment))
+                } else {
+                    Timber.tag("TM_TRANSCRIPT").w(
+                        "Empty transcript text for chunkIndex=%d sessionId=%s",
+                        chunkIndex,
+                        sessionId,
+                    )
                 }
                 sessionRepository.updateChunkStatus(chunkId, ChunkStatus.COMPLETED)
-                Timber.d("Transcription complete for chunk $chunkIndex")
+                Timber.tag("TM_TRANSCRIPT").d(
+                    "Transcription complete for chunkIndex=%d sessionId=%s",
+                    chunkIndex,
+                    sessionId,
+                )
                 Result.success()
             },
             onFailure = { e ->
-                Timber.e(e, "Transcription failed for chunk $chunkIndex")
+                Timber.tag("TM_TRANSCRIPT").e(e, "Transcription failed for chunkIndex=%d sessionId=%s", chunkIndex, sessionId)
                 sessionRepository.updateChunkStatus(chunkId, ChunkStatus.FAILED)
-                if (runAttemptCount < MAX_RETRIES) Result.retry() else Result.failure()
+
+                if (e is GeminiApiException && e.httpCode == 429) {
+                    Timber.w("Rate limited (429) — waiting 15s before retry")
+                    delay(15_000)
+                    if (runAttemptCount < MAX_RETRIES) Result.retry() else Result.failure()
+                } else {
+                    if (runAttemptCount < MAX_RETRIES) Result.retry() else Result.failure()
+                }
             },
         )
     }

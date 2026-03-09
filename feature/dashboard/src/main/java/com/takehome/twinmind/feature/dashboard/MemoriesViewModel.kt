@@ -2,17 +2,19 @@ package com.takehome.twinmind.feature.dashboard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.takehome.twinmind.core.data.repository.AuthRepository
 import com.takehome.twinmind.core.data.repository.ChatRepository
 import com.takehome.twinmind.core.data.repository.SessionRepository
 import com.takehome.twinmind.core.model.ChatMessage
 import com.takehome.twinmind.core.model.Session
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.update
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -40,6 +42,7 @@ data class MemoriesItem(
 
 @HiltViewModel
 class MemoriesViewModel @Inject constructor(
+    authRepository: AuthRepository,
     sessionRepository: SessionRepository,
     chatRepository: ChatRepository,
 ) : ViewModel() {
@@ -47,7 +50,10 @@ class MemoriesViewModel @Inject constructor(
     private val selectedTab = MutableStateFlow(0)
     private val searchQuery = MutableStateFlow("")
 
-    private val sessions = sessionRepository.observeAll()
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val sessions = authRepository.currentUserId.flatMapLatest { uid ->
+        if (uid != null) sessionRepository.observeByUser(uid) else flowOf(emptyList())
+    }
     private val allChatMessages = chatRepository.observeAll()
 
     val uiState: StateFlow<MemoriesUiState> = combine(
@@ -110,9 +116,10 @@ class MemoriesViewModel @Inject constructor(
     ): List<MemoriesGroup> {
         val sessionById = sessions.associateBy { it.id }
 
+        val userSessionIds = sessionById.keys
         val latestUserMessageBySession = chats
             .asSequence()
-            .filter { it.role == "user" }
+            .filter { it.role == "user" && it.sessionId in userSessionIds }
             .groupBy { it.sessionId }
             .mapValues { (_, msgs) -> msgs.maxByOrNull { it.createdAt } }
             .mapNotNull { (sessionId, msg) -> msg?.let { sessionId to it } }

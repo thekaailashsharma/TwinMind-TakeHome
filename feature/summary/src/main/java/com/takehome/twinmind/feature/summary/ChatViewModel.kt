@@ -65,6 +65,13 @@ class ChatViewModel @Inject constructor(
 
         viewModelScope.launch {
             transcript = transcriptRepository.getFullTranscript(sessionId)
+            Timber.tag("TM_TRANSCRIPT")
+                .d(
+                    "ChatViewModel.loadSession loaded transcript sessionId=%s length=%d preview=\"%s\"",
+                    sessionId,
+                    transcript.length,
+                    transcript.take(80).replace("\n", " "),
+                )
             val summary = summaryRepository.getBySession(sessionId)
             summaryText = summary?.summaryText.orEmpty()
 

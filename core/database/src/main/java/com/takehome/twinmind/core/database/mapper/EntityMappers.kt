@@ -17,6 +17,7 @@ import com.takehome.twinmind.core.model.TranscriptSegment
 
 fun SessionEntity.toDomain(): Session = Session(
     id = id,
+    userId = userId,
     title = title,
     startedAt = startedAt,
     endedAt = endedAt,
@@ -32,6 +33,7 @@ fun SessionEntity.toDomain(): Session = Session(
 
 fun Session.toEntity(): SessionEntity = SessionEntity(
     id = id,
+    userId = userId,
     title = title,
     startedAt = startedAt,
     endedAt = endedAt,

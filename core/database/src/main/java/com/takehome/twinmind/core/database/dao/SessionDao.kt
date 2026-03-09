@@ -5,6 +5,7 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Update
 import com.takehome.twinmind.core.database.entity.SessionEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -13,6 +14,9 @@ interface SessionDao {
 
     @Query("SELECT * FROM sessions ORDER BY startedAt DESC")
     fun observeAll(): Flow<List<SessionEntity>>
+
+    @Query("SELECT * FROM sessions WHERE userId = :userId OR userId IS NULL ORDER BY startedAt DESC")
+    fun observeByUser(userId: String): Flow<List<SessionEntity>>
 
     @Query("SELECT * FROM sessions WHERE id = :id")
     suspend fun getById(id: String): SessionEntity?
@@ -24,7 +28,10 @@ interface SessionDao {
     fun observeByStatus(status: String): Flow<List<SessionEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsert(session: SessionEntity)
+    suspend fun insert(session: SessionEntity)
+
+    @Update
+    suspend fun update(session: SessionEntity)
 
     @Delete
     suspend fun delete(session: SessionEntity)

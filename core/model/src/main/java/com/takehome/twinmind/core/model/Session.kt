@@ -17,6 +17,7 @@ enum class RecordingPauseReason {
 
 data class Session(
     val id: String = UUID.randomUUID().toString(),
+    val userId: String? = null,
     val title: String? = null,
     val startedAt: Long = System.currentTimeMillis(),
     val endedAt: Long? = null,
